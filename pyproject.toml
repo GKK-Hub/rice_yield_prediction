@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rice-yield"
+version = "0.1.0"
+description = "Rice yield prediction project"
+authors = [
+    { name = "Gowtham Kumar K.", email = "gowthamkumar.kg@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+dependencies = []
+
+[project.scripts]
+rice-yield = "rice_yield.cli:app"

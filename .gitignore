@@ -1,0 +1,42 @@
+ # --- Python cache files ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Jupyter / Quarto ---
+.ipynb_checkpoints/
+*.qmd~
+*.html
+*.pdf
+*.docx
+
+# --- Data (large, reproducible) ---
+data/raw/
+data/processed/
+
+# --- MLflow (experiment logs) ---
+mlruns/
+mlartifacts/
+
+# --- Models & Pickle files ---
+*.pkl
+*.joblib
+
+# --- Logs ---
+*.log
+
+# --- Build / Packaging ---
+*.egg-info/
+dist/
+build/
+
+# --- IDE / Editor settings ---
+.vscode/
