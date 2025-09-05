@@ -17,3 +17,22 @@ dependencies = []
 
 [project.scripts]
 rice-yield = "rice_yield.cli:app"
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+ignore_missing_imports = true
+check_untyped_defs = true
+
+# Tell mypy where to look
+mypy_path = "src"
+
+# Include both src and tests in checking
+files = [
+    "src",
+    "tests"
+]
+
+
+
+
