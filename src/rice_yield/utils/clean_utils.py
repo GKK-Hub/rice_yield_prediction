@@ -72,13 +72,6 @@ def map_columns(df: pd.DataFrame) -> pd.Index:
     return df.columns.map(lambda col: normalize_column_names(col))
 
 
-def infer_column_name(file_name: Path) -> str:
-    """
-    Removes the extension in file name to be used as a column name
-    """
-    return file_name.stem
-
-
 def annual_average(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
     """
     Averages the monthly data to annual data and names the column as
