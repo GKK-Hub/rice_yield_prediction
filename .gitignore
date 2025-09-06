@@ -20,7 +20,8 @@ ENV/
 
 # --- Data (large, reproducible) ---
 data/raw/
-data/processed/
+data/cleaned/
+data/final/
 
 # --- MLflow (experiment logs) ---
 mlruns/
