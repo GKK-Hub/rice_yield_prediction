@@ -16,7 +16,7 @@ license = { text = "MIT" }
 dependencies = []
 
 [project.scripts]
-rice-yield = "rice_yield.cli:app"
+rice-yield = "rice_yield.cli:main"
 
 [tool.mypy]
 python_version = "3.12"
