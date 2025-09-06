@@ -19,7 +19,7 @@ dependencies = []
 rice-yield = "rice_yield.cli:app"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 check_untyped_defs = true
