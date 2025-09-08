@@ -21,7 +21,9 @@ def process_file(file_path: Path, output_dir: Path) -> None:
                      'minimum_temperature',
                      'maximum_temperature',
                      'water_deficit',
-                     'actual_evapotranspiration'
+                     'actual_evapotranspiration',
+                     'potential_evapotranspiration',
+                     'rainfall'
                      ]
     df = cu.read_csv(file_path)
     df = cu.drop_location_id(df)
