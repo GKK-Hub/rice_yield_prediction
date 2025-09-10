@@ -5,13 +5,13 @@ Helper functions used in notebooks for data exploration and visualization.
 """
 
 import pandas as pd
+import numpy as np
 from IPython.display import display, HTML
 import matplotlib.pyplot as plt
 import seaborn as sns
 from shiny.express import ui, render, input
 from htmltools import TagList, tags, Tag
-# from typing import Any
-# from markupsafe import Markup
+import matplotlib.colors as mcolors
 
 
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -163,3 +163,38 @@ def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
                    tags.strong(dist_remarks.get(col)))
         )
     return user_input, dist_plot, dist_remarks_ui
+
+
+def show_correlation_heatmap(corr_df: pd.DataFrame) -> render.plot:
+    @render.plot(width=900, height=700)
+    def corr_plot():
+
+        plt.style.use('fivethirtyeight')
+
+        fig, ax = plt.subplots(1)
+        # sky_blue_cmap = sns.light_palette('deepskyblue',
+        # as_cmap=True, reverse=True)
+        colors = colors = ['deepskyblue', 'white', 'deepskyblue']
+        cmap = mcolors.LinearSegmentedColormap.from_list('custom_deepskyblue',
+                                                         colors,
+                                                         N=100)
+        norm = mcolors.CenteredNorm()
+        # Plot the heatmap
+        sns.heatmap(corr_df,
+                    annot=True,
+                    cmap=cmap,
+                    vmin=-1,
+                    vmax=1,
+                    fmt='.1f',
+                    mask=np.triu(np.ones_like(corr_df, dtype=bool)),
+                    norm=norm
+                    )
+        plt.title('Heatmap of Correlation Coefficient Matrix',
+                  fontdict={'fontsize': 12,
+                            'fontweight': 'bold',
+                            'family': 'Arial'})
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=10)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
+        ax.xaxis.grid(False)
+        ax.yaxis.grid(False)
+    return corr_plot
