@@ -167,7 +167,7 @@ def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
 
 def show_correlation_heatmap(corr_df: pd.DataFrame) -> render.plot:
     @render.plot(width=900, height=700)
-    def corr_plot():
+    def heatmap_plot():
 
         plt.style.use('fivethirtyeight')
 
@@ -197,4 +197,68 @@ def show_correlation_heatmap(corr_df: pd.DataFrame) -> render.plot:
         ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
         ax.xaxis.grid(False)
         ax.yaxis.grid(False)
-    return corr_plot
+    return heatmap_plot
+
+
+corr_output_type = tuple[Tag, render.plot, render.ui]
+
+
+def show_correlation_with_target(df: pd.DataFrame) -> corr_output_type:
+    # Define variables and remarks
+    corr_variables = [
+                    'act_etranspiration',
+                    'pot_etranspiration',
+                    'area',
+                    'production',
+                    'irrigated_area',
+                    'max_temperature',
+                    'min_temperature',
+                    'precipitation',
+                    'water_deficit',
+                    'rainfall'
+    ]
+    corr_remarks = {
+        "act_etranspiration": "No correlation with rice_yield.",
+        "pot_etranspiration": "No correlation with rice_yield.",
+        "area": "No correlation with rice_yield.",
+        "production": "Strong positive correlation with rice_yield.",
+        "irrigated_area": "Moderate positive correlation with rice_yield.",
+        "max_temperature": "Weak negative correlation with rice_yield.",
+        "min_temperature": "Weak negative correlation with rice_yield.",
+        "precipitation": "Moderate positive correlation with rice_yield.",
+        "water_deficit": "Strong negative correlation with rice_yield.",
+        "rainfall": " Moderate positive correlation with rice_yield."
+    }
+    # Create UI elements
+    user_input = ui.input_select("corr_var",
+                                 "Choose Variable",
+                                 choices=corr_variables)
+
+    @render.plot(width=900, height=400)
+    def corr_plot():
+        col = input.corr_var()
+
+        corr = df['yield'].corr(df[col])
+        # print(f'Correlation: {corr:.2f}')
+
+        # 2. Scatter plot with regression line
+        plt.style.use('fivethirtyeight')
+
+        fig, ax = plt.subplots(1)
+        sns.regplot(x=col, y='yield', data=df, ax=ax)
+        plt.title(f'Scatter Plot (Correlation: {corr:.2f})',
+                  fontdict={'fontsize': 12,
+                            'fontweight': 'bold',
+                            'family': 'Arial'})
+        ax.set_xlabel(ax.get_xlabel(), fontsize=11)
+        ax.set_ylabel(ax.get_ylabel(), fontsize=11)
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=10)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
+
+    @render.ui
+    def corr_remarks_ui():
+        col = input.corr_var()
+        return TagList(tags.p("Remarks for ",
+                              tags.code(col), ": ",
+                              tags.strong(corr_remarks.get(col))))
+    return user_input, corr_plot, corr_remarks_ui
