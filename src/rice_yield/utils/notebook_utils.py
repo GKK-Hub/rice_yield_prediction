@@ -41,13 +41,20 @@ def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=rename_cols)
 
 
-def show_output(df: pd.DataFrame, max_height: str = "600px") -> None:
+def render_print(text: str) -> ui.HTML:
+    """Render text in a Shiny UI."""
+    return ui.markdown(text)
+
+
+def render_table(df: pd.DataFrame, max_height: str = "600px") -> None:
     html = df.to_html(index=True, table_id="scrollable-table")
     css = """
     <style>
     #scrollable-table {
         border-collapse: collapse;
-        width: 100%;
+        width: auto;
+        margin-left: auto;
+        margin-right: auto;
     }
     #scrollable-table th {
         position: sticky;
@@ -58,6 +65,7 @@ def show_output(df: pd.DataFrame, max_height: str = "600px") -> None:
         padding: 8px;
         text-align: left;
         font-weight: bold;
+        text-transform: none;
     }
     #scrollable-table td {
         padding: 8px;
@@ -101,25 +109,29 @@ def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
                     'rainfall'
     ]
     dist_remarks = {"dist_name": (
-        "Most of the districts have 26 years' data, except a few."),
+        "Most of the districts have 26 years' data, except Nagapattinam."),
         "act_etranspiration": (
         "Almost normally distributed with no outliers or skewness."),
         "area": (
         "The data is approximately normal with right skew."),
         "production": (
-        "The data is approximately normal with slight right skew."),
+        "The data is approximately normal with right skew."),
         "yield": (
-        "The `rice_yield` variable is approximately normal with left skew."),
+        "The `distribution is approximately normal with slight left skew."),
         "irrigated_area": (
         "The data is approximately normal with right skew."),
-        "max_temperature": "Distribution is bi-modal",
-        "min_temperature": "Distribution is bi-modal.",
+        "max_temperature": (
+            "Distribution is mostly symmetric with left skew due to outliers."
+            ),
+        "min_temperature": "Almost same as max_temperature",
         "precipitation": (
-        "The data is approximately normal with slight right skew."),
+        "The distribution is approximately normal with slight right skew."),
         "water_deficit": (
         "Almost normally distributed with no outliers or skewness."),
-        "rainfall": "Almost normally distributed",
-        "pot_etranspiration": "Almost normally distributed"}
+        "rainfall": "Almost normally distributed with outliers.",
+        "pot_etranspiration": (
+            "Distribution is approximately normal with slight left skew."
+            )}
     # Create UI elements
     user_input = ui.input_select("dist_var",
                                  "Choose Variable",
@@ -200,12 +212,11 @@ def show_correlation_heatmap(corr_df: pd.DataFrame) -> render.plot:
     return heatmap_plot
 
 
-corr_output_type = tuple[Tag, render.plot, render.ui]
-
-
-def show_correlation_with_target(df: pd.DataFrame) -> corr_output_type:
-    # Define variables and remarks
+def correlation_with_target(df: pd.DataFrame) -> tuple[Tag,
+                                                       render.plot,
+                                                       render.ui]:
     corr_variables = [
+                    'x',
                     'act_etranspiration',
                     'pot_etranspiration',
                     'area',
@@ -217,25 +228,36 @@ def show_correlation_with_target(df: pd.DataFrame) -> corr_output_type:
                     'water_deficit',
                     'rainfall'
     ]
-    corr_remarks = {
-        "act_etranspiration": "No correlation with rice_yield.",
-        "pot_etranspiration": "No correlation with rice_yield.",
-        "area": "No correlation with rice_yield.",
-        "production": "Strong positive correlation with rice_yield.",
-        "irrigated_area": "Moderate positive correlation with rice_yield.",
-        "max_temperature": "Weak negative correlation with rice_yield.",
-        "min_temperature": "Weak negative correlation with rice_yield.",
-        "precipitation": "Moderate positive correlation with rice_yield.",
-        "water_deficit": "Strong negative correlation with rice_yield.",
-        "rainfall": " Moderate positive correlation with rice_yield."
-    }
-    # Create UI elements
+    corr_remarks = {"dist_name": (
+        "Most of the districts have 26 years' data, except Nagapattinam."),
+        "act_etranspiration": (
+        "Almost normally distributed with no outliers or skewness."),
+        "area": (
+        "The data is approximately normal with right skew."),
+        "production": (
+        "The data is approximately normal with right skew."),
+        "yield": (
+        "The `distribution is approximately normal with slight left skew."),
+        "irrigated_area": (
+        "The data is approximately normal with right skew."),
+        "max_temperature": (
+            "Distribution is mostly symmetric with left skew due to outliers."
+            ),
+        "min_temperature": "Almost same as max_temperature",
+        "precipitation": (
+        "The distribution is approximately normal with slight right skew."),
+        "water_deficit": (
+        "Almost normally distributed with no outliers or skewness."),
+        "rainfall": "Almost normally distributed with outliers.",
+        "pot_etranspiration": (
+            "Distribution is approximately normal with slight left skew."
+            )}
     user_input = ui.input_select("corr_var",
                                  "Choose Variable",
                                  choices=corr_variables)
 
-    @render.plot(width=900, height=400)  # type: ignore
-    def corr_plot() -> None:
+    @render.plot(width=900, height=400)
+    def corr_plot():
         col = input.corr_var()
 
         corr = df['yield'].corr(df[col])
@@ -255,10 +277,10 @@ def show_correlation_with_target(df: pd.DataFrame) -> corr_output_type:
         ax.set_xticklabels(ax.get_xticklabels(), fontsize=10)
         ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
 
-    @render.ui  # type: ignore
-    def corr_remarks_ui() -> TagList:
+    @render.ui
+    def corr_remarks_ui():
         col = input.corr_var()
-        return TagList(tags.p("Remarks for ",
-                              tags.code(col), ": ",
+        return TagList(tags.p("Remarks for ", tags.code(col),
+                              ": ",
                               tags.strong(corr_remarks.get(col))))
     return user_input, corr_plot, corr_remarks_ui
