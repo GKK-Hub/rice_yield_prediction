@@ -127,7 +127,7 @@ def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
                                  )
 
     # Plot renderer
-    @render.plot(width=900, height=400)
+    @render.plot(width=900, height=400)  # type: ignore
     def dist_plot() -> None:
         col = input.dist_var()
         if col != 'dist_name':
@@ -153,7 +153,7 @@ def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
         return
 
     # Remarks renderer
-    @render.ui
+    @render.ui  # type: ignore
     def dist_remarks_ui() -> TagList:
         col = input.dist_var()
         return TagList(
@@ -166,8 +166,8 @@ def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
 
 
 def show_correlation_heatmap(corr_df: pd.DataFrame) -> render.plot:
-    @render.plot(width=900, height=700)
-    def heatmap_plot():
+    @render.plot(width=900, height=700)  # type: ignore
+    def heatmap_plot() -> None:
 
         plt.style.use('fivethirtyeight')
 
@@ -234,8 +234,8 @@ def show_correlation_with_target(df: pd.DataFrame) -> corr_output_type:
                                  "Choose Variable",
                                  choices=corr_variables)
 
-    @render.plot(width=900, height=400)
-    def corr_plot():
+    @render.plot(width=900, height=400)  # type: ignore
+    def corr_plot() -> None:
         col = input.corr_var()
 
         corr = df['yield'].corr(df[col])
@@ -255,8 +255,8 @@ def show_correlation_with_target(df: pd.DataFrame) -> corr_output_type:
         ax.set_xticklabels(ax.get_xticklabels(), fontsize=10)
         ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
 
-    @render.ui
-    def corr_remarks_ui():
+    @render.ui  # type: ignore
+    def corr_remarks_ui() -> TagList:
         col = input.corr_var()
         return TagList(tags.p("Remarks for ",
                               tags.code(col), ": ",
