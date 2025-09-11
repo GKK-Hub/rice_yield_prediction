@@ -257,7 +257,7 @@ def correlation_with_target(df: pd.DataFrame) -> tuple[Tag,
                                  choices=corr_variables)
 
     @render.plot(width=900, height=400)
-    def corr_plot():
+    def corr_plot() -> None:
         col = input.corr_var()
 
         corr = df['yield'].corr(df[col])
@@ -278,7 +278,7 @@ def correlation_with_target(df: pd.DataFrame) -> tuple[Tag,
         ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
 
     @render.ui
-    def corr_remarks_ui():
+    def corr_remarks_ui() -> TagList:
         col = input.corr_var()
         return TagList(tags.p("Remarks for ", tags.code(col),
                               ": ",
