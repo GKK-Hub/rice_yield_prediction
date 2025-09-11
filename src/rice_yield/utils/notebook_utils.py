@@ -81,7 +81,7 @@ def show_output(df: pd.DataFrame, max_height: str = "600px") -> None:
         {html}
     </div>
     """
-    display(HTML(scrollable))  # type: ignore
+    display(HTML(scrollable))
 
 
 def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
