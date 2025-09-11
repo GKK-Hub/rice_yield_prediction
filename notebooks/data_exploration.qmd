@@ -1,0 +1,308 @@
+---
+title: "Exploratory Data Analysis on Rice Yield Dataset"
+format:
+  html:
+    smooth-scroll: true
+    encoding: utf-8
+    toc: true
+    toc-location: right
+    toc-depth: 3
+    toc-title: Chapters
+    theme: zephyr
+    # monofont: "JetBrains Mono"
+    page-layout: full
+    code-tools: true
+    include-in-header: 
+      text: |
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+        <style>
+          code, pre {
+            font-family: 'JetBrains Mono', monospace !important;
+          }
+        </style>
+        <meta charset="UTF-8">
+execute:
+  enabled: true
+  echo: true
+  output: true
+server: shiny
+jupyter: python3
+
+
+---
+In this file, we are going to explore the cleaned dataset by
+visualizing distribution of predictors and response, identifying correlation between variables, and checking data types.
+
+
+## Chapter 1: Exploring the Data
+
+```{python}
+#| code-fold: true
+import random
+import warnings
+import pandas as pd
+import numpy as np
+
+warnings.filterwarnings('ignore')
+
+SEED = 42
+
+random.seed(SEED)
+np.random.seed(SEED)
+
+# pd.set_option('display.precision', 2)
+pd.set_option('display.notebook_repr_html', True)
+pd.set_option('display.float_format', '{:.2f}'.format)
+pd.set_option('display.max_rows', 10)
+
+```
+
+
+```{python}
+from rice_yield.utils.paths import get_data_file, get_data_dir
+from rice_yield.utils.notebook_utils import render_table
+
+file_path = get_data_file(get_data_dir("final"), "rice_yield.csv")
+
+df = pd.read_csv(file_path)
+
+render_table(df.head())
+```
+
+The columns in the dataset are shown below.
+```{python}
+#| code-fold: true
+render_table(pd.DataFrame(df.columns, columns=['Variables/Attributes']))
+```
+
+The target variable is `rice_yield`. Every other column is a feature that we\'ll be using to predict the target.
+
+Let\'s check for missing values in the dataset. Sometimes, missing values are encoded as `-1`. We check for both `np.NaN` and `-1`.
+
+::: {.panel-tabset}
+### -1 Found
+```{python}
+render_table(pd.DataFrame(df[df == -1].any(), columns=['-1 Found']))
+```
+### null Found
+```{python}
+render_table(pd.DataFrame(df.isnull().any(), columns=['null Found']))
+```
+:::
+
+There are no missing values in our dataset.
+
+
+```{python}
+render_table(pd.DataFrame(df['dist_name'].unique(), columns=['Districts']))
+```
+
+There are `31` unique districts in our dataset. We shorten the column names in our dataset for simplification.
+
+```{python}
+from rice_yield.utils.notebook_utils import rename_columns
+
+df = rename_columns(df)
+render_table(pd.DataFrame(df.columns, columns=['Variables/Attributes']))
+```
+
+
+```{python}
+from rice_yield.utils.notebook_utils import render_print
+n_years = df['year'].nunique()
+min_year = df['year'].min()
+max_year = df['year'].max()
+
+text = f"The rice yield dataset has `{n_years}` years' data. Minimum year: `{min_year}` | Maximum year: `{max_year}`"
+
+render_print(text)
+```
+
+
+```{python}
+district_data_count = pd.DataFrame(df['dist_name'].value_counts())
+render_table(district_data_count)
+```
+
+More than half of the districts have data for all the 26 years. So, we are removing some districts that do not have enough data (i.e. <= 20 years).
+
+
+```{python}
+low_data_districts = district_data_count[district_data_count['count'] <= 20].index
+render_table(pd.DataFrame(low_data_districts))
+```
+
+
+
+```{python}
+#| code-fold: true
+#| output: false
+district_mask = ~df['dist_name'].isin(low_data_districts)
+```
+
+
+
+```{python}
+filtered_df = df[district_mask]
+render_table(pd.DataFrame(filtered_df['dist_name'].unique(), columns=['Filtered Districts']))
+```
+
+
+We can observe that low-data districts have been removed from our dataset.
+
+
+```{python}
+#| output: false
+#| code-fold: true
+del df
+```
+
+---
+
+## Chapter 2: Correlation Analysis
+
+
+```{python}
+drop_columns = ['dist_name', 'year']
+corr_df = filtered_df.drop(columns=drop_columns).corr()
+```
+
+
+```{python}
+from rice_yield.utils.notebook_utils import show_correlation_heatmap
+
+show_correlation_heatmap(corr_df)
+```
+
+
+---
+
+## Chapter 3: Distribution of Variables
+
+```{python}
+from rice_yield.utils.notebook_utils import show_distribution
+
+user_input, dist_plot, dist_remarks = show_distribution(filtered_df)
+user_input
+dist_plot
+dist_remarks
+```
+
+---
+
+## Chapter 4: Outlier Inspection
+
+::: {.panel-tabset}
+### Potential Evapotranspiration
+```{python}
+#| code-fold: true
+required_columns=['year', 'dist_name', 'pot_etranspiration']
+render_table(filtered_df[filtered_df['pot_etranspiration'] < 120][required_columns],
+max_height="400px")
+render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+```
+
+
+### Area
+
+```{python}
+#| code-fold: true
+
+required_columns = ['year', 'dist_name', 'area']
+render_table(filtered_df[filtered_df['area'] > 210][required_columns],
+max_height="400px")
+render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+
+```
+
+### Production
+
+
+```{python}
+#| code-fold: true
+
+required_columns = ['year', 'dist_name', 'production']
+render_table(filtered_df[filtered_df['production'] > 700][required_columns], max_height="400px")
+render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+```
+
+
+### Yield
+
+
+```{python}
+#| code-fold: true
+
+required_columns = ['year', 'dist_name', 'yield']
+render_table(filtered_df[filtered_df['yield'] < 1100][required_columns], max_height="400px")
+render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+```
+
+### Irrigated Area
+
+
+```{python}
+#| code-fold: true
+
+required_columns = ['year', 'dist_name', 'irrigated_area']
+render_table(filtered_df[filtered_df['irrigated_area'] > 190][required_columns], max_height="400px")
+render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+```
+
+### Maximum Temperature
+
+```{python}
+#| code-fold: true
+
+required_columns = ['year', 'dist_name', 'max_temperature']
+render_table(filtered_df[filtered_df['max_temperature'] < 30][required_columns], max_height="400px")
+render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+```
+
+
+### Minimum Temperature
+
+```{python}
+#| code-fold: true
+
+required_columns = ['year', 'dist_name', 'min_temperature']
+render_table(filtered_df[filtered_df['min_temperature'] < 20][required_columns], max_height="400px")
+render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+```
+
+
+### Precipitation
+
+```{python}
+#| code-fold: true
+
+required_columns = ['year', 'dist_name', 'precipitation']
+render_table(filtered_df[filtered_df['precipitation'] > 140][required_columns], max_height="400px")
+render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+```
+
+### Rainfall
+
+```{python}
+#| code-fold: true
+
+required_columns = ['year', 'dist_name', 'rainfall']
+render_table(filtered_df[filtered_df['rainfall'] > 150][required_columns], max_height="400px")
+render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+```
+:::
+
+---
+
+## Chapter 5: Feature Engineering
+
+* We observed that `rice_area` and `rice_irrigated_area` has very strong correlation. Since rice is a water-intensive crop, this correlation makes sense. So, removing one of the columns reduces complexity and simultaneously we're not losing any information.
+
+```{python}
+filtered_df.drop(columns=['irrigated_area'], inplace=True)
+```
+
+```{python}
+from rice_yield.utils.clean_utils import write_csv
+write_csv(filtered_df, get_data_file(get_data_dir("final"), "yield_processed.csv"))
+```
