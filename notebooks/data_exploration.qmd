@@ -182,7 +182,7 @@ show_correlation_heatmap(corr_df)
 ```{python}
 from rice_yield.utils.notebook_utils import show_distribution
 
-user_input, dist_plot, dist_remarks = show_distribution(filtered_df)
+user_input, dist_plot, dist_remarks = show_distribution(filtered_df.copy())
 user_input
 dist_plot
 dist_remarks
@@ -296,7 +296,7 @@ render_print("We can observe that Nilgiris as the lowest potential evapotranspir
 
 ## Chapter 5: Feature Engineering
 
-* We observed that `rice_area` and `rice_irrigated_area` has very strong correlation. Since rice is a water-intensive crop, this correlation makes sense. So, removing one of the columns reduces complexity and simultaneously we're not losing any information.
+* We observed that `rice_area` and `rice_irrigated_area` has very strong correlation. Since rice is a water-intensive crop, this correlation makes sense. So, removing one of the columns reduces complexity and simultaneously we\'re not losing any information.
 
 ```{python}
 filtered_df.drop(columns=['irrigated_area'], inplace=True)
