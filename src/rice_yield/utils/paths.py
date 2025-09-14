@@ -27,9 +27,16 @@ def get_data_dir(subfolder: str) -> Path:
     """
     valid = {"raw", "cleaned", "final"}
     if subfolder not in valid:
-        raise ValueError(f"Invalid subfolder {subfolder}."
-                         f"Must be one of {valid}.")
-    return subfolder_map[subfolder]
+        raise ValueError(f"Invalid subfolder {subfolder}.\
+                         Must be one of {valid}.")
+
+    folder = subfolder_map[subfolder]
+
+    # Create 'cleaned' and 'final' folders if missing
+    if subfolder in {"cleaned", "final"}:
+        folder.mkdir(parents=True, exist_ok=True)
+
+    return folder
 
 
 def get_data_file(subfolder_path: Path, filename: str) -> Path:
