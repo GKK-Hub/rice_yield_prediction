@@ -1,0 +1,264 @@
+---
+title: "Model Training and Optimization"
+format:
+  html:
+    smooth-scroll: true
+    encoding: utf-8
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    toc-title: Chapters
+    theme: zephyr
+    # monofont: "JetBrains Mono"
+    page-layout: full
+    code-tools: true
+    include-in-header: 
+      text: |
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+        <style>
+          code, pre {
+            font-family: 'JetBrains Mono', monospace !important;
+          }
+        </style>
+        <meta charset="UTF-8">
+execute:
+  enabled: true
+  echo: true
+  output: true
+server: shiny
+jupyter: python3
+
+---
+
+In this file, we\'re going to do model training and optimization. Finally, we\'ll save the best performing model and use that for inference and SHAP analysis.
+
+
+```{python}
+#| code-fold: true
+import random
+import warnings
+import pandas as pd
+import numpy as np
+
+warnings.filterwarnings('ignore')
+```
+
+
+```{python}
+#| code-fold: true
+from rice_yield.utils.paths import get_data_file, get_data_dir
+from rice_yield.utils.notebook_utils import render_table
+
+file_path = get_data_file(get_data_dir("final"), "yield_processed.csv")
+
+df = pd.read_csv(file_path)
+```
+
+---
+
+## Chapter 6: Split Data - Train, Valid and Test
+
+Let\'s sort the data before splitting the data.
+
+```{python}
+df = df.sort_values(['year', 'dist_name'], ignore_index=True)
+render_table(df)
+```
+
+---
+
+We\'ll use 80% of the data for training and the remaining for testing purpose.
+
+---
+
+```{python}
+cutoff = int(df['year'].nunique() * 0.8) + df['year'].min() 
+```
+
+
+```{python}
+train_df = df[df['year'] <= cutoff].copy()
+test_df = df[df['year'] > cutoff].copy()
+```
+
+::: {.panel-tabset}
+### Train DataFrame
+
+```{python}
+#| code-fold: true
+render_table(train_df)
+```
+
+### Test DataFrame
+```{python}
+#| code-fold: true
+
+render_table(test_df)
+```
+:::
+
+
+```{python}
+#| code-fold: true
+df['split'] = df['year'].apply(lambda x: "Train" if x <= cutoff else "Test")
+```
+
+
+```{python}
+from rice_yield.utils.plot_utils import show_splits
+
+user_input, split_plot = show_splits(df)
+user_input
+split_plot
+```
+
+### Train and Test Set
+```{python}
+target = "yield"
+X_train = train_df.drop(columns=target)
+y_train = train_df[target]
+
+X_test = test_df.drop(columns=target)
+y_test = test_df[target]
+```
+
+
+### Time-series Split
+
+
+```{python}
+from sklearn import set_config
+from sklearn.model_selection import TimeSeriesSplit
+
+set_config(display="diagram")
+
+tscv = TimeSeriesSplit(n_splits=5)
+```
+
+```{python}
+#| code-fold: true
+# for i, (train_idx, test_idx) in enumerate(tscv.split(X_train)):
+#   print(f"Split {i + 1}: Train size = {len(train_idx)}, Test size = {len(test_idx)}")
+```
+
+## Chapter 7: Data Preprocessing
+
+In this chapter, we\'re using a preprocessing pipleine to transform categoric data (`dist_name`) in our dataset. Also, some models like Linear Regression benefit from scaling numerical data.
+
+
+```{python}
+# Column Selector
+
+from sklearn.compose import make_column_selector as selector
+
+numeric_selector = selector(dtype_exclude=object)
+categoric_selector = selector(dtype_include=object)
+```
+
+
+```{python}
+numeric_columns = numeric_selector(X_train)
+categoric_columns = categoric_selector(X_train)
+```
+
+
+### Preprocessor Pipeline
+```{python}
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+categoric_transformer = OneHotEncoder(handle_unknown="ignore")
+numeric_transformer = StandardScaler()
+
+preprocessor = ColumnTransformer(transformers=[('categoric', categoric_transformer, categoric_columns),
+('numeric', numeric_transformer, numeric_columns)], remainder="passthrough", verbose_feature_names_out=False)
+
+preprocessor
+```
+
+# Chapter 7: Validation Curves
+
+```{python}
+from sklearn.linear_model import Ridge
+from sklearn.svm import SVR
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import ExtraTreesRegressor
+from xgboost import XGBRegressor
+
+from sklearn.pipeline import Pipeline
+```
+
+```{python}
+candidate_models = {
+  "Ridge Regression": {
+    "pipeline": Pipeline(steps=[('preprocessor', preprocessor), ('ridge', Ridge(max_iter=1000))]),
+    "param_grid": {
+        "ridge__alpha": [0.1, 1.0, 10.0, 100.0],  # Regularization strength
+        "ridge__solver": ["auto", "svd", "cholesky"],  # Solver choices
+    }
+},
+    "Support Vector Regressor": {
+        "pipeline": Pipeline(steps=[('preprocessor', preprocessor), ('svr', SVR(max_iter=500))]),
+        "param_grid": {
+            "svr__C": [800, 1000, 1100],
+            "svr__epsilon": [2, 2.5, 3],
+            "svr__gamma": [0.00001, 0.0001, 0.001],
+        }
+    },
+
+    "Extra Trees Regressor": {
+        "pipeline": Pipeline(steps=[('preprocessor', preprocessor), ('etr', ExtraTreesRegressor())]),
+        "param_grid": {
+            "etr__min_samples_split": [2, 3, 5, 10, 15, 20],
+            "etr__n_estimators": [2, 3, 5, 10, 50, 75],
+            "etr__max_depth": [2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "etr__min_samples_leaf": [2, 3, 4, 5, 6, 7, 8, 9, 10]
+        }
+    },
+    "Ada Boost Regressor": {
+        "pipeline": Pipeline(steps=[('preprocessor', preprocessor), 
+                                    ('ada', AdaBoostRegressor(DecisionTreeRegressor()))]),
+        "param_grid": {
+            "ada__n_estimators": [5, 10, 20, 50, 100, 125],
+            "ada__learning_rate": [0.001, 0.01, 0.02, 0.04, 0.06],
+        }
+    },
+    "XGBoost Regressor": {
+        "pipeline": Pipeline(steps=[('preprocessor', preprocessor),
+                                    ('xgb', XGBRegressor())]),
+        "param_grid": {
+            "xgb__n_estimators": [5, 10, 20, 50, 100, 125],
+            "xgb__learning_rate": [0.01, 0.1, 0.2],
+            "xgb__max_depth": [2, 3, 5, 7]
+        }
+    }
+}
+```
+
+```{python}
+from sklearn.model_selection import ValidationCurveDisplay
+
+svr_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+('svr', SVR(max_iter=1000))])
+
+param_range = [0, 100, 500, 800, 1000]
+
+plt.style.use('fivethirtyeight')
+fig, ax = plt.subplots()
+
+
+display = ValidationCurveDisplay.from_estimator(
+  estimator = svr_pipeline,
+  X=X_train,
+  y=y_train,
+  param_name='svr__C',
+  param_range=param_range, 
+  cv=tscv,
+  scoring='neg_root_mean_squared_error',
+  negate_score=True,
+  ax=ax
+)
+
+ax.plot()
+
+```
