@@ -5,7 +5,7 @@ format:
     smooth-scroll: true
     encoding: utf-8
     toc: true
-    toc-location: left
+    toc-location: right
     toc-depth: 3
     toc-title: Chapters
     theme: zephyr
@@ -40,7 +40,7 @@ import warnings
 import pandas as pd
 import numpy as np
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 ```
 
 
@@ -182,7 +182,7 @@ preprocessor
 from sklearn.linear_model import Ridge
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.ensemble import ExtraTreesRegressor, AdaBoostRegressor
 from xgboost import XGBRegressor
 
 from sklearn.pipeline import Pipeline
@@ -193,8 +193,7 @@ candidate_models = {
   "Ridge Regression": {
     "pipeline": Pipeline(steps=[('preprocessor', preprocessor), ('ridge', Ridge(max_iter=1000))]),
     "param_grid": {
-        "ridge__alpha": [0.1, 1.0, 10.0, 100.0],  # Regularization strength
-        "ridge__solver": ["auto", "svd", "cholesky"],  # Solver choices
+        "ridge__alpha": [0.1, 1.0, 10.0, 100.0]  # Regularization strength
     }
 },
     "Support Vector Regressor": {
@@ -236,29 +235,64 @@ candidate_models = {
 ```
 
 ```{python}
-from sklearn.model_selection import ValidationCurveDisplay
+import matplotlib.pyplot as plt
 
-svr_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
-('svr', SVR(max_iter=1000))])
+from rice_yield.utils.paths import create_model_dir
+from rice_yield.utils.plot_utils import validation_curve_display
+from rice_yield.models.mlflow_utils import start_run, log_artifact, create_folder
 
-param_range = [0, 100, 500, 800, 1000]
+# Iterate over candidate models
+for model_name, model_data in candidate_models.items():
+    pipe = model_data["pipeline"]
+    param_grid = model_data["param_grid"]
 
-plt.style.use('fivethirtyeight')
-fig, ax = plt.subplots()
+    # Start an MLflow run under the appropriate experiment and run names
+    with start_run(model_name=model_name, experiment_type="Validation", run_name="validation_curves") as run:
+
+        # Get the folder to save plots and create it if missing
+        folder_path = create_model_dir(model_name)
+        # create_folder(str(folder_path))  # Ensure the directory exists
+
+        # Loop over hyperparameters to plot validation curves
+        for param, values in param_grid.items():
+            fig, ax = validation_curve_display(
+                estimator=pipe,
+                X=X_train,
+                y=y_train,
+                param_name=param,
+                param_range=values,
+                cv=tscv,
+                scoring='neg_root_mean_squared_error',
+                negate_score=True
+            )
+
+            # Build the file path and save the figure
+            param_name_safe = param.split('__')[-1]
+            fig_path = folder_path / f"{param_name_safe}.png"
+            fig.savefig(fig_path)
+            plt.close(fig)
+
+            # Log the saved plot as an artifact in MLflow
+            log_artifact(str(fig_path))
+
+```
 
 
-display = ValidationCurveDisplay.from_estimator(
-  estimator = svr_pipeline,
-  X=X_train,
-  y=y_train,
-  param_name='svr__C',
-  param_range=param_range, 
-  cv=tscv,
-  scoring='neg_root_mean_squared_error',
-  negate_score=True,
-  ax=ax
-)
 
-ax.plot()
+```{python}
+#| error: false
+from rice_yield.utils.plot_utils import show_validation_curves
+
+model, param, plot = show_validation_curves()
+model
+param
+plot
+```
+
+
+# Chapter 8: Hyperparameter Optimization
+
+
+```{python}
 
 ```
