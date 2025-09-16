@@ -6,14 +6,18 @@
 
 import pandas as pd
 import warnings
-# import numpy as np
+import numpy as np
 # from IPython.display import display, HTML
+from typing import Tuple
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import seaborn as sns
 from PIL import Image
 from shiny.express import ui, render, input
 from htmltools import Tag
 from sklearn.model_selection import ValidationCurveDisplay, BaseCrossValidator
+from sklearn.metrics import PredictionErrorDisplay
 from sklearn.pipeline import Pipeline
 from .paths import get_validation_dir
 from .notebook_utils import get_model_names, get_param_names, get_plot_path
@@ -170,3 +174,74 @@ def show_validation_curves():
         ax.set_title(f"{input.model()} — {input.param()}")
         plot.close()
     return dropdown_model, dropdown_param, show_plot
+
+
+def plot_prediction_error(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    model_name: str,
+    figsize: Tuple[int, int] = (10, 6)
+) -> Tuple[Figure, Axes]:
+    """
+    Wrapper for sklearn's PredictionErrorDisplay with 'fivethirtyeight' style.
+
+    Args:
+        y_true (np.ndarray): Actual values.
+        y_pred (np.ndarray): Predicted values.
+        model_name (str): Name of the model for the title.
+        figsize (tuple): Size of the figure.
+
+    Returns:
+        Tuple[plt.Figure, plt.Axes]: The matplotlib figure and axis objects.
+    """
+    plt.style.use('fivethirtyeight')
+    fig, ax = plt.subplots(figsize=figsize)
+    # Create the PredictionErrorDisplay
+    _ = PredictionErrorDisplay.from_predictions(
+        y_true=y_true,
+        y_pred=y_pred,
+        ax=ax,
+        kind='actual_vs_predicted'
+    )
+    ax.set_title(f"Prediction Error: {model_name}",
+                 fontsize=12,
+                 fontweight='bold')
+    return fig, ax
+
+
+def plot_train_test_scores(
+    train_scores: np.ndarray,
+    test_scores: np.ndarray,
+    model_name: str,
+    scoring_name: str = "RMSE",
+    figsize: Tuple[int, int] = (8, 6)
+) -> Tuple[Figure, Axes]:
+    """
+    Plot train vs test scores with standard deviation as error bars.
+
+    Args:
+        train_scores (np.ndarray): Array of train scores from cross_validate.
+        test_scores (np.ndarray): Array of test scores from cross_validate.
+        model_name (str): Name of the model for the title.
+        scoring_name (str): Name of the metric for the y-axis.
+        figsize (tuple): Size of the figure.
+
+    Returns:
+        Tuple[plt.Figure, plt.Axes]: Matplotlib figure and axis objects.
+    """
+    plt.style.use('fivethirtyeight')
+    fig, ax = plt.subplots(figsize=figsize)
+    # Prepare data
+    means = [np.mean(train_scores), np.mean(test_scores)]
+    stds = [np.std(train_scores), np.std(test_scores)]
+    labels = ['Train', 'Test']
+    # Bar positions
+    x_pos = np.arange(len(labels))
+    # Plot bars with error bars
+    ax.bar(x_pos, means, yerr=stds, capsize=5, color=['#1f77b4',
+                                                      '#ff69b4'])
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(labels)
+    ax.set_ylabel(scoring_name)
+    ax.set_title(f"{model_name}: Train vs Test {scoring_name}")
+    return fig, ax
