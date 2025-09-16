@@ -236,6 +236,7 @@ candidate_models = {
 
 ```{python}
 import matplotlib.pyplot as plt
+import mlflow
 
 from rice_yield.utils.paths import create_model_dir
 from rice_yield.utils.plot_utils import validation_curve_display
@@ -274,7 +275,9 @@ for model_name, model_data in candidate_models.items():
 
             # Log the saved plot as an artifact in MLflow
             log_artifact(str(fig_path))
-
+            dataset = mlflow.data.from_pandas(df)
+            mlflow.log_input(dataset)
+mlflow.end_run()
 ```
 
 
@@ -293,6 +296,232 @@ plot
 # Chapter 8: Hyperparameter Optimization
 
 
+## Dataset Registration
+
 ```{python}
+from rice_yield.models.mlflow_utils import set_run_tags
+
+dataset_path = get_data_file(get_data_dir("final"), "yield_processed.csv")
+
+with start_run(model_name="", experiment_type="Dataset_Registration", run_name="Dataset_v1") as dataset_run:
+    log_artifact(str(dataset_path))
+    set_run_tags({"dataset_version": "v1"})
+    dataset_run_id = dataset_run.info.run_id
+mlflow.end_run()
+```
+
+
+```{python}
+from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import Pipeline
+import numpy as np
+import mlflow
+from rice_yield.models.mlflow_utils import start_run, set_run_tags
+
+def make_objective(model_name: str, model_class, param_fn):
+    """
+    Create an Optuna objective function for a specific model, using cross_val_score
+    and logging everything with MLflow utilities.
+
+    Args:
+        model_name (str): Name of the model (e.g., "SVR").
+        model_class: The model class (e.g., SVR, RandomForestRegressor).
+        param_fn: Callable that takes a trial and returns a dictionary of hyperparameters.
+
+    Returns:
+        objective: A function suitable for Optuna's study.optimize().
+    """
+    def objective(trial):
+        # Suggest hyperparameters
+        params = param_fn(trial)
+
+        # Start MLflow run for this trial
+        with start_run(model_name=model_name, experiment_type="HPO", run_name=f"{model_name}_trial_{trial.number}", nest=True) as run:
+            trial.set_user_attr("mlflow_run_id", mlflow.active_run().info.run_id)
+            
+            # Build pipeline
+            model = Pipeline([
+                ('preprocessor', preprocessor),  # your preprocessor defined in notebook
+                (model_name.lower(), model_class(**params))
+            ])
+
+            # Cross-validate for RMSE
+            rmse_scores = cross_val_score(
+                model, X_train, y_train, 
+                cv=tscv, scoring="neg_root_mean_squared_error"
+            )
+            rmse = -np.mean(rmse_scores)
+
+            # Optional: log hyperparameters as tags
+            set_run_tags(params)
+            
+            # Log RMSE metric
+            mlflow.log_metric("rmse", rmse)
+
+        return rmse
+
+    return objective
+```
+
+
+```{python}
+from sklearn.ensemble import RandomForestRegressor
+# === Candidate models and their search spaces ===
+search_spaces = {
+    "SVR": {
+        "model_class": SVR,
+        "params": lambda trial: {
+            "C": trial.suggest_float("C", 0.1, 100, log=True),
+            "epsilon": trial.suggest_float("epsilon", 0.01, 1.0, log=True),
+            "gamma": trial.suggest_float("gamma", 1e-4, 1e-1, log=True),
+            # "kernel": trial.suggest_categorical("kernel", ["rbf", "poly", "linear"])
+        }
+    },
+    "RandomForest": {
+        "model_class": RandomForestRegressor,
+        "params": lambda trial: {
+            "n_estimators": trial.suggest_int("n_estimators", 50, 200),
+            "max_depth": trial.suggest_int("max_depth", 3, 15),
+            "min_samples_split": trial.suggest_int("min_samples_split", 2, 10)
+        }
+    },
+    "XGB": {
+        "model_class": XGBRegressor,
+        "params": lambda trial: {
+            "n_estimators": trial.suggest_int("n_estimators", 50, 200),
+            "max_depth": trial.suggest_int("max_depth", 3, 10),
+            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True)
+        }
+    }
+}
+```
+
+
+```{python}
+import rice_yield.models.optuna_utils as opt
+import rice_yield.models.mlflow_utils as mlf
+from rice_yield.utils.notebook_utils import save_model
+from sklearn.model_selection import cross_validate
+from rice_yield.utils.notebook_utils import save_model
+from rice_yield.utils.paths import get_output_dir
+```
+
+
+```{python}
+best_models = {}
+
+for model_name, model_params in search_spaces.items():
+    with mlf.start_run(model_name, "HPO", f"{model_name}_Optimization") as parent_run:
+        study = opt.create_study(study_name=f"{model_name}_Study",
+        direction="minimize",
+        storage="sqlite:///../outputs/models_db.sqlite3")
+        print("Optimization Started for", model_name)
+
+        # opt.run_optimization(study,
+        # objective_func=make_objective(model_name, model_params['model_class'], model_params['params']), n_trials=10)
+        study.optimize(make_objective(model_name, model_params["model_class"], model_params["params"]), n_trials=10)
+
+        print("Optimization completed for", model_name)
+
+        best_trial = opt.get_best_trial(study)
+        best_run_id = opt.get_best_run_id(study)
+        mlf.set_run_tags({"best_trial_number": opt.get_best_trail_number(study)})
+        mlf.log_params(opt.get_best_params(study))
+        mlf.log_metrics("RMSE", best_trial.value)
+
+
+        best_model = Pipeline([
+            ('preprocessor', preprocessor),
+            (model_name.lower(), model_params['model_class'](**best_trial.params))
+        ])
+
+        cv_results = cross_validate(
+        best_model,
+        X_train, 
+        y_train,
+        cv=tscv,
+        scoring="neg_root_mean_squared_error",
+        return_train_score=True)
+
+        # Compute mean and std for train/test
+        rmse_train = -cv_results["train_score"]
+        # rmse_train = cv_results["train_score"]
+        # rmse_test = cv_results["test_score"]
+        rmse_test = -cv_results["test_score"]
+
+        best_model.fit(X_train, y_train)
+
+        output_folder = get_output_dir() / "ml_models"
+        save_model(best_model, model_name, output_folder)
+
+        # Save the best model to best_results
+        best_models[model_name] = {
+        "model": best_model,
+        "best_params": opt.get_best_params(study),
+        "study": study,
+        "cv_results": {
+            "train_score": rmse_train,
+            # "train_std": rmse_train,
+            # "test_mean": rmse_test,
+            "test_score": rmse_test
+        }
+    }
+    mlf.end_run()
+```
+
+
+```{python}
+from shiny.express import render
+from rice_yield.utils.plot_utils import plot_prediction_error
+
+@render.ui
+def dropdon_models():
+    return ui.input_select(
+        id="models",
+        label="Select Model(s)",
+        choices=sorted(best_models.keys()),  # Available models from the dictionary
+    )
+
+@render.plot
+def prediction_error_plot():
+    # req(input.model())  # Ensure a model is selected
+    model_info = best_models[input.models()]  # Get model details
+    model = model_info["model"]
+
+    # Call the reusable plot function
+    fig, ax = plot_prediction_error(y_train, model.predict(X_train), '')
+    
+    ax.set_title(f"Prediction Error for {input.models()}", fontsize=14, fontweight='bold')
+    return fig
+
+```
+
+
+```{python}
+from rice_yield.utils.plot_utils import plot_train_test_scores
+
+@render.ui
+def dropdwn_models():
+    return ui.input_select(
+        id="model_scores",
+        label="Select Model(s)",
+        choices=sorted(best_models.keys()),  # Available models from the dictionary
+    )
+
+
+@render.plot
+def plot_train_test():
+    # req(input.model_scores())
+    model_name = input.model_scores()
+    cv = best_models[model_name]["cv_results"]
+
+    fig, ax = plot_train_test_scores(
+        train_scores=cv['train_score'],
+        test_scores=cv['test_score'],
+        model_name=model_name,
+        scoring_name="RMSE"
+    )
+    return fig
+
 
 ```
