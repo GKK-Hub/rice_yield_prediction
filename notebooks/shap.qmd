@@ -1,0 +1,94 @@
+---
+title: "SHAP Analysis"
+format:
+  html:
+    smooth-scroll: true
+    encoding: utf-8
+    toc: true
+    toc-location: right
+    toc-depth: 3
+    toc-title: Chapters
+    theme: zephyr
+    # monofont: "JetBrains Mono"
+    page-layout: full
+    code-tools: true
+    include-in-header: 
+      text: |
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+        <style>
+          code, pre {
+            font-family: 'JetBrains Mono', monospace !important;
+          }
+        </style>
+        <meta charset="UTF-8">
+execute:
+  enabled: true
+  echo: true
+  output: true
+server: shiny
+jupyter: python3
+
+---
+
+In this notebook, we will do SHAP analysis on the best model that we obtained by hyperparameter optimiztion using Optuna Framework.
+
+# Chapter 10: SHAP Analysis
+
+```{python}
+import pandas as pd
+from rice_yield.utils.paths import get_data_dir
+
+data_dir = get_data_dir("final")
+X_train = pd.read_csv(data_dir/"X_train.csv")
+X_test = pd.read_csv(data_dir/"X_test.csv")
+X_test.head()
+```
+
+
+```{python}
+import shap
+import joblib
+from rice_yield.utils.paths import get_output_dir
+from rice_yield.utils.notebook_utils import load_model
+
+best_model_path = get_output_dir()/"best_model/svr.joblib"
+best_model = load_model(best_model_path)
+best_model
+```
+
+```{python}
+preprocessor = best_model.named_steps['preprocessor']
+estimator = best_model.named_steps['svr']
+
+X_train_preprocessed = preprocessor.transform(X_train)  # fit_transform not needed, already fitted
+X_test_preprocessed = preprocessor.transform(X_test)
+
+estimator
+```
+
+
+```{python}
+#| output: false
+feature_names = best_model.named_steps['preprocessor'].get_feature_names_out()
+explainer = shap.Explainer(estimator.predict, X_train_preprocessed, feature_names=feature_names)
+
+shap_values = explainer(X_train_preprocessed)
+```
+
+```{python}
+import matplotlib.pyplot as plt
+plt.style.use('fivethirtyeight')
+
+fig_summary, ax_summary = plt.subplots(figsize=(10, 6))
+shap.plots.bar(shap_values)
+# plt.tight_layout()
+# plt.show()
+```
+
+
+```{python}
+fig_beeswarm, ax_beeswarm = plt.subplots()
+shap.plots.beeswarm(shap_values)
+# plt.tight_layout()
+# plt.show()
+```
