@@ -408,7 +408,7 @@ from rice_yield.utils.paths import get_output_dir
 
 
 ```{python}
-best_models = {}
+model_results = {}
 
 for model_name, model_params in search_spaces.items():
     with mlf.start_run(model_name, "HPO", f"{model_name}_Optimization") as parent_run:
@@ -451,18 +451,16 @@ for model_name, model_params in search_spaces.items():
 
         best_model.fit(X_train, y_train)
 
-        output_folder = get_output_dir() / "ml_models"
+        output_folder = get_output_dir() / "trained_models"
         save_model(best_model, model_name, output_folder)
 
         # Save the best model to best_results
-        best_models[model_name] = {
+        model_results[model_name] = {
         "model": best_model,
         "best_params": opt.get_best_params(study),
         "study": study,
         "cv_results": {
             "train_score": rmse_train,
-            # "train_std": rmse_train,
-            # "test_mean": rmse_test,
             "test_score": rmse_test
         }
     }
@@ -479,13 +477,13 @@ def dropdon_models():
     return ui.input_select(
         id="models",
         label="Select Model(s)",
-        choices=sorted(best_models.keys()),  # Available models from the dictionary
+        choices=sorted(model_results.keys()),  # Available models from the dictionary
     )
 
 @render.plot
 def prediction_error_plot():
     # req(input.model())  # Ensure a model is selected
-    model_info = best_models[input.models()]  # Get model details
+    model_info = model_results[input.models()]  # Get model details
     model = model_info["model"]
 
     # Call the reusable plot function
@@ -505,7 +503,7 @@ def dropdwn_models():
     return ui.input_select(
         id="model_scores",
         label="Select Model(s)",
-        choices=sorted(best_models.keys()),  # Available models from the dictionary
+        choices=sorted(model_results.keys()),  # Available models from the dictionary
     )
 
 
@@ -513,7 +511,7 @@ def dropdwn_models():
 def plot_train_test():
     # req(input.model_scores())
     model_name = input.model_scores()
-    cv = best_models[model_name]["cv_results"]
+    cv = model_results[model_name]["cv_results"]
 
     fig, ax = plot_train_test_scores(
         train_scores=cv['train_score'],
@@ -524,4 +522,14 @@ def plot_train_test():
     return fig
 
 
+```
+
+
+```{python}
+data_dir = get_data_dir("final")
+save_model(model_results['SVR'], 'svr', get_output_dir()/"best_model")
+X_train.to_csv(data_dir/"X_train.csv", index=False)
+X_test.to_csv(data_dir/"X_test.csv", index=False)
+y_train.to_csv(data_dir/"y_train.csv", index=False)
+y_test.to_csv(data_dir/"y_test.csv", index=False)
 ```
