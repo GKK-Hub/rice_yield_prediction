@@ -392,4 +392,4 @@ if st.button("Predict"):
 
     # 5️⃣ Show prediction
 
-    st.success(f"🔮 Predicted Yield: {prediction:.2f} kg/ha | True Yield: {y_true:.2f} kg/ha")
+    st.success(f"🔮 Predicted Yield: {prediction:.2f} kg/ha | True Yield (with default values): {y_true:.2f} kg/ha")
