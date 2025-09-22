@@ -47,8 +47,8 @@ def process_file(file_path: Path, output_dir: Path) -> None:
 
 def process_all_files() -> None:
     """
-        Processes all raw files in the `raw_files/` directory
-        
+        Processes all raw files in `data\raw_files`
+
         Args:
             None
         Returns:
