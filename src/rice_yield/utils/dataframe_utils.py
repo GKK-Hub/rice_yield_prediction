@@ -129,5 +129,32 @@ def annual_average(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
     return df[['year', 'dist_name', column_name]]
 
 
+def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Rename columns in a DataFrame for brevity or clarity.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+        rename_dict (dict): Dictionary mapping old column names to new ones.
+
+    Returns:
+        pd.DataFrame: DataFrame with renamed columns.
+    """
+    rename_cols = {
+        'rice_area_1000_ha': 'area',
+        'rice_production_1000_tons': 'production',
+        'rice_yield_kg_per_ha': 'yield',
+        'average_actual_evapotranspiration': 'act_etranspiration',
+        'average_potential_evapotranspiration': 'pot_etranspiration',
+        'rice_irrigated_area_1000_ha': 'irrigated_area',
+        'average_precipitation': 'precipitation',
+        'average_water_deficit': 'water_deficit',
+        'average_maximum_temperature': 'max_temperature',
+        'average_minimum_temperature': 'min_temperature',
+        'average_rainfall': 'rainfall'
+    }
+    return df.rename(columns=rename_cols)
+
+
 if __name__ == "__main__":
     print(__doc__)
