@@ -4,7 +4,7 @@ Combine all cleaned CSV files into a single dataset.
 Workflow:
     - Reads all CSVs from data/cleaned/
     - Merges them on ["year", "dist_name"] using inner join
-    - Writes the combined dataset to data/final/rice_yield.csv
+    - Writes the combined dataset to `data/final/rice_yield.csv`
 """
 
 import pandas as pd
@@ -16,11 +16,13 @@ from rice_yield.utils.paths import get_data_dir, get_data_file
 
 def combine_cleaned_files(input_dir: Path, output_file: Path) -> None:
     """
-    Combine all cleaned CSVs into one final dataset.
+    Combines all cleaned CSVs into one final dataset.
 
     Args:
-        input_dir (Path): Directory containing cleaned CSVs.
-        output_file (Path): Path to save the combined dataset.
+        `input_dir` (`Path`): Directory containing cleaned CSVs.
+        `output_file` (`Path`): Path to save the combined dataset.
+    Returns:
+        `None`
     """
     files = sorted(input_dir.glob("*.csv"))
     if not files:
