@@ -198,55 +198,21 @@ st.markdown(
 
     /* SLIDER CUSTOMIZATION */
 
-    /* Force override Streamlit's default orange slider */
-    .stSlider * {
-        background-color: #e3f2fd !important;
-    }
-
-    /* More specific slider track targeting */
-    .stSlider > div > div > div,
+    stSlider > div > div > div,
     .stSlider > div > div > div > div,
     .stSlider > div > div > div > div > div,
     div[data-testid="stSlider"] div,
     div[data-testid="stSlider"] div div,
     div[data-testid="stSlider"] div div div {
         background-color: #e3f2fd !important;  /* Light blue track */
+        color: #1565c0 !important;
     }
 
-    /* Target the filled portion specifically */
-    .stSlider [role="slider"] ~ div,
-    .stSlider div[style*="background"],
-    div[data-testid="stSlider"] div[style*="background-color"] {
-        background-color: #90caf9 !important;  /* Medium blue filled area */
-    }
-
-    /* Slider handle/thumb - multiple targeting approaches */
-    .stSlider [role="slider"],
-    .stSlider div[role="slider"],
-    div[data-testid="stSlider"] [role="slider"],
-    .stSlider > div > div > div > div > div[style*="position: absolute"] {
-        background-color: #0d47a1 !important;  /* Dark blue handle */
-        border: 2px solid #ffffff !important;
-        border-radius: 50% !important;
-        width: 20px !important;
-        height: 20px !important;
-    }
-
-    /* Nuclear option - override ALL slider colors */
-    .stSlider div,
-    .stSlider span,
-    .stSlider [class*="slider"],
-    div[data-testid="stSlider"] * {
-        background: #e3f2fd !important;
-    }
-
-    /* But keep the handle dark blue */
     .stSlider [role="slider"],
     div[data-testid="stSlider"] [role="slider"] {
         background: #0d47a1 !important;
-        border: 2px solid white !important;
+        color: #1565c0 !important;
     }
-    
     </style>
     """,
     unsafe_allow_html=True
@@ -340,8 +306,8 @@ if st.button("Predict"):
     title="Historical Yield Trend"
 )
     fig.update_layout(
-        plot_bgcolor="#E0F7FA",   # chart background
-        paper_bgcolor="#E0F7FA",  # entire chart background
+        plot_bgcolor="#ebf7fc",   # chart background, #E0F7FA
+        paper_bgcolor="#ebf7fc",  # entire chart background
         font_color="black",
         margin=dict(l=20, r=20, t=50, b=20),
         xaxis=dict(showgrid=True, gridcolor="lightgray"),
