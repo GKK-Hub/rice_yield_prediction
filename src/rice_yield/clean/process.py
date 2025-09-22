@@ -16,21 +16,28 @@ from rice_yield.utils.paths import get_data_dir, get_data_file
 
 
 def process_file(file_path: Path, output_dir: Path) -> None:
-    """Process a single file and save the cleaned version."""
-    monthly_files = ['precipitation',
-                     'minimum_temperature',
-                     'maximum_temperature',
-                     'water_deficit',
-                     'actual_evapotranspiration',
-                     'potential_evapotranspiration',
-                     'rainfall'
-                     ]
+    """
+        Processes a single file and save the cleaned version
+
+        Args:
+            `file_path` (`Path`) - Input file path
+            `output_dir` (`Path`) - Directory for the file to be saved
+        Returns:
+            `None`
+    """
+    monthly_data_files = ['precipitation',
+                          'minimum_temperature',
+                          'maximum_temperature',
+                          'water_deficit',
+                          'actual_evapotranspiration',
+                          'potential_evapotranspiration',
+                          'rainfall']
     df = cu.read_csv(file_path)
     df = cu.drop_location_id(df)
     df = cu.standardize_district_names(df)
     df.columns = cu.map_columns(df)
 
-    if file_path.stem in monthly_files:
+    if file_path.stem in monthly_data_files:
         df = cu.annual_average(df, "average_" + file_path.stem)
 
     write_path = get_data_file(output_dir, file_path.parts[-1])
@@ -39,7 +46,14 @@ def process_file(file_path: Path, output_dir: Path) -> None:
 
 
 def process_all_files() -> None:
-    """Process all raw files in the `raw_files/` directory."""
+    """
+        Processes all raw files in the `raw_files/` directory
+        
+        Args:
+            None
+        Returns:
+            `None`
+    """
     raw_dir = get_data_dir("raw")
     cleaned_dir = get_data_dir("cleaned")
 
