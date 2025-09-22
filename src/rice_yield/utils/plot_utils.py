@@ -7,15 +7,15 @@
 import pandas as pd
 import warnings
 import numpy as np
-# from IPython.display import display, HTML
 from typing import Tuple
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import seaborn as sns
 from PIL import Image
 from shiny.express import ui, render, input
-from htmltools import Tag
+from htmltools import TagList, tags, Tag
 from sklearn.model_selection import ValidationCurveDisplay, BaseCrossValidator
 from sklearn.metrics import PredictionErrorDisplay
 from sklearn.pipeline import Pipeline
@@ -24,6 +24,126 @@ from .notebook_utils import get_model_names, get_param_names, get_plot_path
 
 warnings.filterwarnings('ignore')
 # import matplotlib.colors as mcolors
+
+
+def show_correlation_heatmap(corr_df: pd.DataFrame) -> render.plot:
+    @render.plot(width=900, height=700)  # type: ignore
+    def heatmap_plot() -> None:
+
+        plt.style.use('fivethirtyeight')
+
+        fig, ax = plt.subplots(1)
+        # sky_blue_cmap = sns.light_palette('deepskyblue',
+        # as_cmap=True, reverse=True)
+        colors = colors = ['deepskyblue', 'white', 'deepskyblue']
+        cmap = mcolors.LinearSegmentedColormap.from_list('custom_deepskyblue',
+                                                         colors,
+                                                         N=100)
+        norm = mcolors.CenteredNorm()
+        # Plot the heatmap
+        sns.heatmap(corr_df,
+                    annot=True,
+                    cmap=cmap,
+                    vmin=-1,
+                    vmax=1,
+                    fmt='.1f',
+                    mask=np.triu(np.ones_like(corr_df, dtype=bool)),
+                    norm=norm
+                    )
+        plt.title('Heatmap of Correlation Coefficient Matrix',
+                  fontdict={'fontsize': 12,
+                            'fontweight': 'bold',
+                            'family': 'Arial'})
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=10)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
+        ax.xaxis.grid(False)
+        ax.yaxis.grid(False)
+    return heatmap_plot
+
+
+def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
+    # Define variables and remarks
+    dist_variables = [
+                    'dist_name',
+                    'act_etranspiration',
+                    'pot_etranspiration',
+                    'area',
+                    'production',
+                    'yield',
+                    'irrigated_area',
+                    'max_temperature',
+                    'min_temperature',
+                    'precipitation',
+                    'water_deficit',
+                    'rainfall'
+    ]
+    dist_remarks = {"dist_name": (
+        "Most of the districts have 26 years' data, except Nagapattinam."),
+        "act_etranspiration": (
+        "Almost normally distributed with no outliers or skewness."),
+        "area": (
+        "The data is approximately normal with right skew."),
+        "production": (
+        "The data is approximately normal with right skew."),
+        "yield": (
+        "The `distribution is approximately normal with slight left skew."),
+        "irrigated_area": (
+        "The data is approximately normal with right skew."),
+        "max_temperature": (
+            "Distribution is mostly symmetric with left skew due to outliers."
+            ),
+        "min_temperature": "Almost same as max_temperature",
+        "precipitation": (
+        "The distribution is approximately normal with slight right skew."),
+        "water_deficit": (
+        "Almost normally distributed with no outliers or skewness."),
+        "rainfall": "Almost normally distributed with outliers.",
+        "pot_etranspiration": (
+            "Distribution is approximately normal with slight left skew."
+            )}
+    # Create UI elements
+    user_input = ui.input_select("dist_var",
+                                 "Choose Variable",
+                                 choices=dist_variables
+                                 )
+
+    # Plot renderer
+    @render.plot(width=900, height=400)  # type: ignore
+    def dist_plot() -> None:
+        col = input.dist_var()
+        if col != 'dist_name':
+            fig, ax = plt.subplots(1, 2)
+            plt.style.use('fivethirtyeight')
+            # Axes 1: original distribution
+            sns.distplot(df[col], ax=ax[0])
+            ax[0].set_xlabel(col, fontsize=11)
+            ax[0].set_ylabel("Density", fontsize=11)
+            # Axes 2: box plot of the original distribution
+            sns.boxplot(df[col], ax=ax[1])
+            ax[1].set_ylabel(col, fontsize=11)
+        else:
+            plt.style.use('fivethirtyeight')
+            fig, ax = plt.subplots(1)
+            df[col].value_counts().plot(kind='bar')
+            ax.set_ylim(0, 27)
+            ax.set_yticks(range(1, 27, 5))
+            ax.set_xlabel('')  # Hide the x-axis label
+            ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
+            ax.set_yticklabels(ax.get_yticklabels(), fontsize=11)
+            ax.xaxis.grid(False)
+        return
+
+    # Remarks renderer
+    @render.ui  # type: ignore
+    def dist_remarks_ui() -> TagList:
+        col = input.dist_var()
+        return TagList(
+            tags.p("Remarks for ",
+                   tags.code(col),
+                   ": ",
+                   tags.strong(dist_remarks.get(col)))
+        )
+    return user_input, dist_plot, dist_remarks_ui
 
 
 def show_splits(df: pd.DataFrame) -> tuple[Tag, render.plot]:
