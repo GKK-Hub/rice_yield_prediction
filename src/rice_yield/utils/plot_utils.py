@@ -51,11 +51,11 @@ def show_correlation_heatmap(corr_df: pd.DataFrame) -> render.plot:
                     norm=norm
                     )
         plt.title('Heatmap of Correlation Coefficient Matrix',
-                  fontdict={'fontsize': 12,
+                  fontdict={'fontsize': 14,
                             'fontweight': 'bold',
                             'family': 'Arial'})
-        ax.set_xticklabels(ax.get_xticklabels(), fontsize=10)
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=11)
         ax.xaxis.grid(False)
         ax.yaxis.grid(False)
     return heatmap_plot
@@ -121,6 +121,10 @@ def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
             # Axes 2: box plot of the original distribution
             sns.boxplot(df[col], ax=ax[1])
             ax[1].set_ylabel(col, fontsize=11)
+            fig.suptitle(f"Distribution of {col}",
+                         fontsize=14,
+                         fontweight='bold',
+                         family='Arial')
         else:
             plt.style.use('fivethirtyeight')
             fig, ax = plt.subplots(1)
@@ -128,9 +132,14 @@ def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
             ax.set_ylim(0, 27)
             ax.set_yticks(range(1, 27, 5))
             ax.set_xlabel('')  # Hide the x-axis label
+            ax.set_ylabel('Year Count', fontsize=11)
             ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
             ax.set_yticklabels(ax.get_yticklabels(), fontsize=11)
             ax.xaxis.grid(False)
+            fig.suptitle(f"Distribution of {col}",
+                         fontsize=14,
+                         fontweight='bold',
+                         family='Arial')
         return
 
     # Remarks renderer
