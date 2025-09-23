@@ -1,5 +1,8 @@
 ---
 title: "Model Training and Optimization"
+author: Gowtham Kumar K
+date: September 25, 2025
+link-external-newwindow: true
 format:
   html:
     smooth-scroll: true
@@ -49,7 +52,7 @@ warnings.filterwarnings("ignore")
 from rice_yield.utils.paths import get_data_file, get_data_dir
 from rice_yield.utils.notebook_utils import render_table
 
-file_path = get_data_file(get_data_dir("final"), "yield_processed.csv")
+file_path = get_data_file(get_data_dir("final"), "rice-yield.csv")
 
 df = pd.read_csv(file_path)
 ```
@@ -103,11 +106,42 @@ render_table(test_df)
 df['split'] = df['year'].apply(lambda x: "Train" if x <= cutoff else "Test")
 ```
 
-
 ```{python}
-from rice_yield.utils.plot_utils import show_splits
+from rice_yield.utils.plot_utils import train_test_plot
+from shiny.express import ui, render, input
 
-user_input, split_plot = show_splits(df)
+
+# plot_columns = [
+#                 "temperature",
+#                 "precipitation",
+#                 "act_etranspiration",
+#                 "pot_etranspiration",
+#                 "yield",
+#                 "water_deficit",
+#                 "rainfall",
+#                 "yield",
+#                 "area"
+#             ]
+
+def show_splits():
+    @render.ui()
+    def drop_down_feature():
+        choices = df.columns.difference(['split', 'dist_name', 'year']).tolist()
+        default_choice = choices[0] if choices else None
+        user_input = ui.input_select('feature', 
+                                    label='Choose a feature',
+                                    choices=choices,
+                                    selected=default_choice)
+        return user_input
+
+    @render.plot()
+    def plot_split():   
+        fig, ax = train_test_plot(df, input.feature())
+        return fig    
+    return drop_down_feature, plot_split                    
+```
+```{python}
+user_input, split_plot = show_splits()
 user_input
 split_plot
 ```
@@ -235,80 +269,193 @@ candidate_models = {
 ```
 
 ```{python}
-import matplotlib.pyplot as plt
-import mlflow
+# import matplotlib.pyplot as plt
+# import mlflow
 
-from rice_yield.utils.paths import create_model_dir
-from rice_yield.utils.plot_utils import validation_curve_display
-from rice_yield.models.mlflow_utils import start_run, log_artifact, create_folder
+# from rice_yield.utils.paths import create_model_dir
+# from rice_yield.utils.plot_utils import validation_curve_display
+# from rice_yield.models.mlflow_utils import start_run, log_artifact, create_folder
 
 # Iterate over candidate models
-for model_name, model_data in candidate_models.items():
-    pipe = model_data["pipeline"]
-    param_grid = model_data["param_grid"]
+# for model_name, model_data in candidate_models.items():
+#     pipe = model_data["pipeline"]
+#     param_grid = model_data["param_grid"]
 
-    # Start an MLflow run under the appropriate experiment and run names
-    with start_run(model_name=model_name, experiment_type="Validation", run_name="validation_curves") as run:
+#     # Start an MLflow run under the appropriate experiment and run names
+#     with start_run(model_name=model_name, experiment_type="Validation", run_name="validation_curves") as run:
 
-        # Get the folder to save plots and create it if missing
-        folder_path = create_model_dir(model_name)
-        # create_folder(str(folder_path))  # Ensure the directory exists
+#         # Get the folder to save plots and create it if missing
+#         folder_path = create_model_dir(model_name)
+#         # create_folder(str(folder_path))  # Ensure the directory exists
 
-        # Loop over hyperparameters to plot validation curves
-        for param, values in param_grid.items():
-            fig, ax = validation_curve_display(
-                estimator=pipe,
-                X=X_train,
-                y=y_train,
-                param_name=param,
-                param_range=values,
-                cv=tscv,
-                scoring='neg_root_mean_squared_error',
-                negate_score=True
-            )
+#         # Loop over hyperparameters to plot validation curves
+#         for param, values in param_grid.items():
+#             fig, ax = validation_curve_display(
+#                 estimator=pipe,
+#                 X=X_train,
+#                 y=y_train,
+#                 param_name=param,
+#                 param_range=values,
+#                 cv=tscv,
+#                 scoring='neg_root_mean_squared_error',
+#                 negate_score=True
+#             )
 
-            # Build the file path and save the figure
-            param_name_safe = param.split('__')[-1]
-            fig_path = folder_path / f"{param_name_safe}.png"
-            fig.savefig(fig_path)
-            plt.close(fig)
+#             # Build the file path and save the figure
+#             param_name_safe = param.split('__')[-1]
+#             fig_path = folder_path / f"{param_name_safe}.png"
+#             fig.savefig(fig_path)
+#             plt.close(fig)
 
-            # Log the saved plot as an artifact in MLflow
-            log_artifact(str(fig_path))
-            dataset = mlflow.data.from_pandas(df)
-            mlflow.log_input(dataset)
-mlflow.end_run()
+#             # Log the saved plot as an artifact in MLflow
+#             log_artifact(str(fig_path))
+#             dataset = mlflow.data.from_pandas(df)
+#             mlflow.log_input(dataset)
+# mlflow.end_run()
 ```
 
 
 
 ```{python}
-#| error: false
-from rice_yield.utils.plot_utils import show_validation_curves
+# #| error: false
+# from rice_yield.utils.plot_utils import show_validation_curves
 
+# model, param, plot = show_validation_curves()
+# model
+# param
+# plot
+```
+
+
+# Chapter 7a: Validation Curves Experiment
+
+```{python}
+model_names = list(candidate_models.keys())
+default_model = model_names[0] if model_names else None
+```
+
+```{python}
+# from rice_yield.utils.plot_utils import validation_curve_display
+# from shiny.express import ui, render, input
+
+# def show_validation_curves():
+#     @render.ui()
+#     def dropdown_model():
+#         return ui.input_select(id='model',
+#                                 label='Select Model',
+#                                 choices=model_names,
+#                                 selected=default_model)
+
+#     @render.ui
+#     def dropdown_param():
+#         params =  list(candidate_models[input.model()]['param_grid'].keys())
+#         default_param = params[0] if params else None
+#         return ui.input_select(id='param',
+#                                 label='Select Hyperparameter',
+#                                 choices=params,
+#                                 selected=default_param)
+
+#     @render.plot(width=800, height=500)  # type: ignore
+#     def show_plot():
+#         plot_params = {
+#                 'estimator': candidate_models[input.model()]['pipeline'],
+#                 'X': X_train,
+#                 'y': y_train,
+#                 'param_name': input.param(),
+#                 'param_range': candidate_models[input.model()]['param_grid'][input.param()],
+#                 'cv': tscv,
+#                 'scoring': 'neg_root_mean_squared_error',
+#             }
+#         fig, ax = validation_curve_display(**plot_params)
+#         return fig
+#     return dropdown_model, dropdown_param, show_plot
+
+```
+
+
+```{python}
+from rice_yield.utils.plot_utils import validation_curve_display
+from shiny.express import ui, render, input
+
+def show_validation_curves():
+    # Create reactive value to track when parameters are properly updated
+    # params_updated = reactive.Value(True)
+    @render.ui()
+    def dropdown_model():
+        return ui.input_select(id='model',
+                                label='Select Model',
+                                choices=model_names,
+                                selected=default_model)
+    
+    @render.ui()
+    def dropdown_param():
+        # Signal that parameters are being updated
+        # params_updated.set(False)
+        
+        # Get parameters for the selected model
+        params = list(candidate_models[input.model()]['param_grid'].keys())
+        default_param = params[0] if params else None
+        
+        # Signal that parameters are now updated
+        # params_updated.set(True)
+        
+        return ui.input_select(id='param',
+                                label='Select Hyperparameter',
+                                choices=params,
+                                selected=default_param)
+    
+    @render.plot(width=900, height=500)  # type: ignore
+    def show_plot():
+        # Wait for parameters to be properly updated
+        # if not params_updated.get():
+        #     return None
+            
+        # Add defensive checks to prevent race conditions
+        try:
+            model_name = input.model()
+            param_name = input.param()
+            
+            # Check if the model exists
+            if model_name not in candidate_models:
+                return None
+            
+            # Check if the parameter exists for the selected model
+            available_params = list(candidate_models[model_name]['param_grid'].keys())
+            if param_name not in available_params:
+                # If the current param doesn't exist for this model, use the first available param
+                param_name = available_params[0] if available_params else None
+                
+            # if param_name is None:
+            #     return None
+            
+            plot_params = {
+                'estimator': candidate_models[model_name]['pipeline'],
+                'X': X_train,
+                'y': y_train,
+                'param_name': param_name,
+                'param_range': candidate_models[model_name]['param_grid'][param_name],
+                'cv': tscv,
+                'scoring': 'neg_root_mean_squared_error',
+            }
+            
+            fig, ax = validation_curve_display(**plot_params)
+            return fig
+            
+        except (KeyError, TypeError, ValueError) as e:
+            # Return None or a placeholder plot during transitions
+            return None
+    
+    return dropdown_model, dropdown_param, show_plot
+```
+
+```{python}
+#| error: false
 model, param, plot = show_validation_curves()
 model
 param
 plot
 ```
-
-
 # Chapter 8: Hyperparameter Optimization
-
-
-## Dataset Registration
-
-```{python}
-from rice_yield.models.mlflow_utils import set_run_tags
-
-dataset_path = get_data_file(get_data_dir("final"), "yield_processed.csv")
-
-with start_run(model_name="", experiment_type="Dataset_Registration", run_name="Dataset_v1") as dataset_run:
-    log_artifact(str(dataset_path))
-    set_run_tags({"dataset_version": "v1"})
-    dataset_run_id = dataset_run.info.run_id
-mlflow.end_run()
-```
 
 
 ```{python}
@@ -487,9 +634,9 @@ def prediction_error_plot():
     model = model_info["model"]
 
     # Call the reusable plot function
-    fig, ax = plot_prediction_error(y_train, model.predict(X_train), '')
+    fig, ax = plot_prediction_error(y_train, model.predict(X_train))
     
-    ax.set_title(f"Prediction Error for {input.models()}", fontsize=14, fontweight='bold')
+    fig.suptitle(f"Prediction Error for {input.models()}", fontsize=14, fontweight='bold', fontfamily='Arial')
     return fig
 
 ```
@@ -497,6 +644,7 @@ def prediction_error_plot():
 
 ```{python}
 from rice_yield.utils.plot_utils import plot_train_test_scores
+from shiny.express import ui, render, input
 
 @render.ui
 def dropdwn_models():
@@ -509,7 +657,6 @@ def dropdwn_models():
 
 @render.plot
 def plot_train_test():
-    # req(input.model_scores())
     model_name = input.model_scores()
     cv = model_results[model_name]["cv_results"]
 
@@ -527,7 +674,7 @@ def plot_train_test():
 
 ```{python}
 data_dir = get_data_dir("final")
-save_model(model_results['SVR'], 'svr', get_output_dir()/"best_model")
+save_model(model_results['SVR']['model'], 'svr', get_output_dir()/"best_model")
 X_train.to_csv(data_dir/"X_train.csv", index=False)
 X_test.to_csv(data_dir/"X_test.csv", index=False)
 y_train.to_csv(data_dir/"y_train.csv", index=False)
