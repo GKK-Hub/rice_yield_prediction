@@ -1,5 +1,8 @@
 ---
 title: "Exploratory Data Analysis on Rice Yield Dataset"
+author: Gowtham Kumar K
+date: September 25, 2025
+link-external-newwindow: true
 format:
   html:
     smooth-scroll: true
@@ -30,8 +33,19 @@ jupyter: python3
 
 
 ---
-In this file, we are going to explore the cleaned dataset by
-visualizing distribution of predictors and response, identifying correlation between variables, and checking data types.
+The objective of this project is to predict rice yield given environmental parameters and the impact of the parameters on rice yield. This could help agronomists and agricultural scientists to make informed decisions in the face of climate change.
+
+So, we\'re using the ICRISAT District Level Database which is real-world database compiled from various government agencies. Here\'s a short version about this dataset.
+
+<blockquote>
+The District Level Database (DLD) for Indian agriculture and allied sectors provides a comprehensive one-stop shop for data on rural sector that enables testing of key research hypotheses, identification of relevant districts / regions for technology dissemination, promoting rural pro-poor programs / development initiatives and identification of relevant representative districts for micro level assessment.
+</blockquote>
+
+Unfortunately, there\'s no API to download the data progrmatically. So, we\'ve downloaded the data manually, cleaned and combined into a single dataset.
+
+In this file, we are going to explore the cleaned dataset by visualizing distribution of predictors and response, identifying correlation between variables, and checking data types. Finally, we\'ll do feature engineering where we engineer columns that might yield better results than the original ones.
+
+Dataset Link: [ICRISAT District Level Crop Data](http://data.icrisat.org/dld/src/crops.html)
 
 
 ## Chapter 1: Exploring the Data
@@ -62,7 +76,7 @@ pd.set_option('display.max_rows', 10)
 from rice_yield.utils.paths import get_data_file, get_data_dir
 from rice_yield.utils.notebook_utils import render_table
 
-file_path = get_data_file(get_data_dir("final"), "rice_yield.csv")
+file_path = get_data_file(get_data_dir("final"), "combine.csv")
 
 df = pd.read_csv(file_path)
 
@@ -74,10 +88,16 @@ The columns in the dataset are shown below.
 #| code-fold: true
 render_table(pd.DataFrame(df.columns, columns=['Variables/Attributes']))
 ```
+|
+
+<br>
+The definition of the columns with unit of measurement are available here under `Definitions` tab:
+[ICRISAT Standard Definitions](http://data.icrisat.org/dld/src/definition_standard.html)
 
 The target variable is `rice_yield`. Every other column is a feature that we\'ll be using to predict the target.
 
 Let\'s check for missing values in the dataset. Sometimes, missing values are encoded as `-1`. We check for both `np.NaN` and `-1`.
+</br>
 
 ::: {.panel-tabset}
 ### -1 Found
@@ -100,7 +120,7 @@ render_table(pd.DataFrame(df['dist_name'].unique(), columns=['Districts']))
 There are `31` unique districts in our dataset. We shorten the column names in our dataset for simplification.
 
 ```{python}
-from rice_yield.utils.notebook_utils import rename_columns
+from rice_yield.utils.dataframe_utils import rename_columns
 
 df = rename_columns(df)
 render_table(pd.DataFrame(df.columns, columns=['Variables/Attributes']))
@@ -159,28 +179,10 @@ del df
 
 ---
 
-## Chapter 2: Correlation Analysis
-
-
-```{python}
-drop_columns = ['dist_name', 'year']
-corr_df = filtered_df.drop(columns=drop_columns).corr()
-```
-
+## Chapter 2: Distribution of Variables
 
 ```{python}
-from rice_yield.utils.notebook_utils import show_correlation_heatmap
-
-show_correlation_heatmap(corr_df)
-```
-
-
----
-
-## Chapter 3: Distribution of Variables
-
-```{python}
-from rice_yield.utils.notebook_utils import show_distribution
+from rice_yield.utils.plot_utils import show_distribution
 
 user_input, dist_plot, dist_remarks = show_distribution(filtered_df.copy())
 user_input
@@ -190,7 +192,7 @@ dist_remarks
 
 ---
 
-## Chapter 4: Outlier Inspection
+## Chapter 3: Outlier Inspection
 
 ::: {.panel-tabset}
 ### Potential Evapotranspiration
@@ -199,7 +201,7 @@ dist_remarks
 required_columns=['year', 'dist_name', 'pot_etranspiration']
 render_table(filtered_df[filtered_df['pot_etranspiration'] < 120][required_columns],
 max_height="400px")
-render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+render_print("We can observe that Nilgiris had the lowest potential evapotranspiration because of its natural low temperature. So, they are not actually outliers, though statistically they are. Removing these data can have impact on model prediction, so wer\'re not removing them.")
 ```
 
 
@@ -211,9 +213,21 @@ render_print("We can observe that Nilgiris as the lowest potential evapotranspir
 required_columns = ['year', 'dist_name', 'area']
 render_table(filtered_df[filtered_df['area'] > 210][required_columns],
 max_height="400px")
-render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+render_print("These districts were among the highest producers of rice in the state. So, not possibly outliers and they could represent real data.")
 
 ```
+
+### Irrigated Area
+
+
+```{python}
+#| code-fold: true
+
+required_columns = ['year', 'dist_name', 'irrigated_area']
+render_table(filtered_df[filtered_df['irrigated_area'] > 190][required_columns], max_height="400px")
+render_print("Same reasoning as `rice_area`.")
+```
+
 
 ### Production
 
@@ -223,7 +237,7 @@ render_print("We can observe that Nilgiris as the lowest potential evapotranspir
 
 required_columns = ['year', 'dist_name', 'production']
 render_table(filtered_df[filtered_df['production'] > 700][required_columns], max_height="400px")
-render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+render_print("As these districts grow more rice, they had high production of rice.")
 ```
 
 
@@ -235,19 +249,9 @@ render_print("We can observe that Nilgiris as the lowest potential evapotranspir
 
 required_columns = ['year', 'dist_name', 'yield']
 render_table(filtered_df[filtered_df['yield'] < 1100][required_columns], max_height="400px")
-render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+render_print("These values doesn't appears to be outliers as they occurred more than once and Virudhunagar which occurred only once is a neighbor of Sivagangai. Unlikely to be an outlier because of data manipulation or incorrect entry.")
 ```
 
-### Irrigated Area
-
-
-```{python}
-#| code-fold: true
-
-required_columns = ['year', 'dist_name', 'irrigated_area']
-render_table(filtered_df[filtered_df['irrigated_area'] > 190][required_columns], max_height="400px")
-render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
-```
 
 ### Maximum Temperature
 
@@ -256,7 +260,7 @@ render_print("We can observe that Nilgiris as the lowest potential evapotranspir
 
 required_columns = ['year', 'dist_name', 'max_temperature']
 render_table(filtered_df[filtered_df['max_temperature'] < 30][required_columns], max_height="400px")
-render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+render_print("These Nilgiris and Coimbatore are neighbouring districts and naturally have influence of one on the other. Kanyakumari, which is a coastal district is also known for its cold tempeatures.")
 ```
 
 
@@ -267,7 +271,7 @@ render_print("We can observe that Nilgiris as the lowest potential evapotranspir
 
 required_columns = ['year', 'dist_name', 'min_temperature']
 render_table(filtered_df[filtered_df['min_temperature'] < 20][required_columns], max_height="400px")
-render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+render_print("Nilgiris had the lowest minimum temperatuere which is due to its natural weather condidtions.")
 ```
 
 
@@ -278,7 +282,7 @@ render_print("We can observe that Nilgiris as the lowest potential evapotranspir
 
 required_columns = ['year', 'dist_name', 'precipitation']
 render_table(filtered_df[filtered_df['precipitation'] > 140][required_columns], max_height="400px")
-render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+render_print("Nilgiris is certainly not an outlier for obvious reasons. Kanyakumari, Kancheepuram and Nagapattinam are  coastal districts which can receive that much precipitation.")
 ```
 
 ### Rainfall
@@ -288,21 +292,52 @@ render_print("We can observe that Nilgiris as the lowest potential evapotranspir
 
 required_columns = ['year', 'dist_name', 'rainfall']
 render_table(filtered_df[filtered_df['rainfall'] > 150][required_columns], max_height="400px")
-render_print("We can observe that Nilgiris as the lowest potential evapotranspiration because of its natural weather conditions.")
+render_print("Same reasoning as `rainfall`")
 ```
 :::
 
 ---
 
+## Chapter 4: Correlation Analysis
+
+
+```{python}
+drop_columns = ['dist_name', 'year']
+corr_df = filtered_df.drop(columns=drop_columns).corr()
+```
+
+
+```{python}
+from rice_yield.utils.plot_utils import show_correlation_heatmap
+
+show_correlation_heatmap(corr_df)
+```
+<br>
+We observed that `area` and `irrigated_area` has very strong correlation. Since rice is a water-intensive crop, this correlation makes sense. So, removing one of the columns reduces complexity and simultaneously we\'re not losing any information. 
+
+Similarly, `area` and `production` are infact strongly correlated. Also, `yield` is calculated by `production` / `area`. So, we can remove either of the columns.
+
+`max_temperature` and `min_temperature` are strongly correlated too. Since `temperature` variable is an important predictor of `yield`, we can take the average temperature instead of removing it.
+</br>
+---
+
 ## Chapter 5: Feature Engineering
 
-* We observed that `rice_area` and `rice_irrigated_area` has very strong correlation. Since rice is a water-intensive crop, this correlation makes sense. So, removing one of the columns reduces complexity and simultaneously we\'re not losing any information.
 
 ```{python}
-filtered_df.drop(columns=['irrigated_area'], inplace=True)
+filtered_df['temperature'] = (filtered_df['min_temperature'] + filtered_df['max_temperature']) / 2
+filtered_df.drop(columns=['irrigated_area', 'production', 'max_temperature', 'min_temperature'], inplace=True)
 ```
 
+
 ```{python}
-from rice_yield.utils.clean_utils import write_csv
-write_csv(filtered_df, get_data_file(get_data_dir("final"), "yield_processed.csv"))
+render_table(filtered_df)
 ```
+
+
+```{python}
+from rice_yield.utils.dataframe_utils import write_csv
+write_csv(filtered_df, get_data_file(get_data_dir("final"), "rice-yield.csv"))
+```
+
+In the next quarto document, we\'ll build models and do hyperparameter optimization using Optuna and log the results into MLflow.
