@@ -157,13 +157,11 @@ def show_distribution(df: pd.DataFrame) -> tuple[Tag, render.plot, render.ui]:
 
 def show_splits(df: pd.DataFrame) -> tuple[Tag, render.plot]:
     plot_columns = [
-                "max_temperature",
-                "min_temperature",
+                "temperature",
                 "precipitation",
                 "act_etranspiration",
                 "pot_etranspiration",
                 "yield",
-                "production",
                 "water_deficit",
                 "rainfall",
                 "yield",
@@ -183,19 +181,19 @@ def show_splits(df: pd.DataFrame) -> tuple[Tag, render.plot]:
                         y=input.feature(),
                         hue='split',
                         ax=ax)
-        plt.title('Train test split', fontdict={'fontsize': 13,
+        plt.title('Train-Test split', fontdict={'fontsize': 14,
                                                 'fontweight': 'bold',
                                                 'family': 'Arial'})
-        plt.xlabel('Year')
+        plt.xlabel('year')
         plt.legend(
                 bbox_to_anchor=(1, 1),
                 loc="upper left",
-                ncol=2,
+                ncol=1,
                 fontsize=12)
         ax.set_xlabel(ax.get_xlabel(), fontsize=11)
         ax.set_ylabel(ax.get_ylabel(), fontsize=11)
-        ax.set_xticklabels(ax.get_xticklabels(), fontsize=10)
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=11)
     return user_input, train_test_plot
 
 
@@ -226,7 +224,7 @@ def validation_curve_display(estimator: Pipeline,
         customization or saving.
     """
     plt.style.use('fivethirtyeight')
-    fig, ax = plt.subplots(figsize=(18, 8))
+    fig, ax = plt.subplots(figsize=(15, 10))
 
     # Create the validation curve plot
     _ = ValidationCurveDisplay.from_estimator(
@@ -244,7 +242,7 @@ def validation_curve_display(estimator: Pipeline,
     # Customize the plot appearance
     ax.set_title(f"Validation Curve for {param_name.split('__')[-1]}",
                  fontdict={
-                'fontsize': 12,
+                'fontsize': 14,
                 'fontweight': 'bold',
                 'family': 'Arial'
             })
@@ -252,10 +250,15 @@ def validation_curve_display(estimator: Pipeline,
     ax.set_ylabel(ax.get_ylabel(), fontsize=11)
 
     # Adjust tick label fonts and disable gridlines
-    ax.set_xticklabels(ax.get_xticklabels(), fontsize=10)
-    ax.set_yticklabels(ax.get_yticklabels(), fontsize=10)
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
+    ax.set_yticklabels(ax.get_yticklabels(), fontsize=11)
     # ax.xaxis.grid(False)
     # ax.yaxis.grid(False)
+    ax.legend(
+                bbox_to_anchor=(1, 1),
+                loc="upper left",
+                ncol=1,
+                fontsize=11)
 
     return fig, ax
 
@@ -290,9 +293,6 @@ def show_validation_curves():
 
     @render.plot(width=800, height=500)  # type: ignore
     def show_plot():
-        # req(input.model(), cancel_output=True)
-        # req(input.param(), cancel_output=True)
-        # req(input.param())
         plot_path = get_plot_path(model_folder(), input.param())
         if not plot_path.exists():
             return None
@@ -300,7 +300,10 @@ def show_validation_curves():
         plot = Image.open(plot_path)
         ax.imshow(plot)
         ax.axis('off')  # Hide axes for image display
-        ax.set_title(f"{input.model()} — {input.param()}")
+        ax.set_title(f"{input.model()} — {input.param()}",
+                     fontdict={'fontsize': 16,
+                               'fontweight': 'bold',
+                               'family': 'Arial'})
         plot.close()
     return dropdown_model, dropdown_param, show_plot
 
@@ -308,7 +311,6 @@ def show_validation_curves():
 def plot_prediction_error(
     y_true: np.ndarray,
     y_pred: np.ndarray,
-    model_name: str,
     figsize: Tuple[int, int] = (10, 6)
 ) -> Tuple[Figure, Axes]:
     """
@@ -324,18 +326,38 @@ def plot_prediction_error(
         Tuple[plt.Figure, plt.Axes]: The matplotlib figure and axis objects.
     """
     plt.style.use('fivethirtyeight')
-    fig, ax = plt.subplots(figsize=figsize)
+    fig, axs = plt.subplots(1, 2, figsize=figsize)
     # Create the PredictionErrorDisplay
     _ = PredictionErrorDisplay.from_predictions(
         y_true=y_true,
         y_pred=y_pred,
-        ax=ax,
+        ax=axs[0],
         kind='actual_vs_predicted'
     )
-    ax.set_title(f"Prediction Error: {model_name}",
-                 fontsize=12,
-                 fontweight='bold')
-    return fig, ax
+    axs[0].set_title("Actual vs Predicted",
+                     fontsize=14,
+                     fontweight='bold',
+                     fontfamily='Arial')
+    axs[0].set_xlabel(axs[0].get_xlabel(), fontsize=11)
+    axs[0].set_ylabel(axs[0].get_ylabel(), fontsize=11)
+    axs[0].set_xticklabels(axs[0].get_xticklabels(), fontsize=11)
+    axs[0].set_yticklabels(axs[0].get_yticklabels(), fontsize=11)
+
+    _ = PredictionErrorDisplay.from_predictions(
+        y_true=y_true,
+        y_pred=y_pred,
+        ax=axs[1],
+        kind='residual_vs_predicted'
+    )
+    axs[1].set_title("Residual vs Predicted",
+                     fontsize=14,
+                     fontweight='bold',
+                     fontfamily='Arial')
+    axs[1].set_xlabel(axs[1].get_xlabel(), fontsize=11)
+    axs[1].set_ylabel(axs[1].get_ylabel(), fontsize=11)
+    axs[1].set_xticklabels(axs[1].get_xticklabels(), fontsize=11)
+    axs[1].set_yticklabels(axs[1].get_yticklabels(), fontsize=11)
+    return fig, axs
 
 
 def plot_train_test_scores(
@@ -370,7 +392,37 @@ def plot_train_test_scores(
     ax.bar(x_pos, means, yerr=stds, capsize=5, color=['#1f77b4',
                                                       '#ff69b4'])
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(labels)
-    ax.set_ylabel(scoring_name)
-    ax.set_title(f"{model_name}: Train vs Test {scoring_name}")
+    ax.set_xticklabels(labels, fontsize=11)
+    ax.set_ylabel(scoring_name, fontsize=11)
+    ax.set_title(f"{model_name}: Train vs Test {scoring_name}",
+                 fontdict={'fontsize': 14,
+                           'fontweight': 'bold',
+                           'family': 'Arial'})
+    return fig, ax
+
+
+def train_test_plot(df: pd.DataFrame, feature: str) -> Tuple:
+    plt.style.use('fivethirtyeight')
+
+    fig, ax = plt.subplots(1)
+    sns.scatterplot(data=df,
+                    x='year',
+                    y=feature,
+                    hue='split',
+                    ax=ax)
+    ax.set_title('Train-Test split',
+                 fontdict={
+                     'fontsize': 14,
+                     'fontweight': 'bold',
+                     'family': 'Arial'})
+    ax.set_xlabel('year')
+    ax.legend(
+            bbox_to_anchor=(1, 1),
+            loc="upper left",
+            ncol=1,
+            fontsize=12)
+    ax.set_xlabel(ax.get_xlabel(), fontsize=11)
+    ax.set_ylabel(ax.get_ylabel(), fontsize=11)
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
+    ax.set_yticklabels(ax.get_yticklabels(), fontsize=11)
     return fig, ax
