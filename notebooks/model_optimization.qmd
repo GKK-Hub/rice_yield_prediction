@@ -75,13 +75,33 @@ We\'ll use 80% of the data for training and the remaining for testing purpose.
 ---
 
 ```{python}
-cutoff = int(df['year'].nunique() * 0.8) + df['year'].min() 
+# cutoff = int(df['year'].nunique() * 0.8) + df['year'].min() 
+# train_cutoff = int(df['year'].nunique() * 0.6) + df['year'].min() #
+# train_df = df[df['year'] <= train_cutoff].copy()
+
+# valid_cutoff = i
 ```
 
+```{python}
+# Experiment: train, valid and test split
+years = sorted(df['year'].unique())
+total_years = len(years)
+
+# Calculate number of years for each split
+train_years = int(total_years * 0.6)
+val_years = int(total_years * 0.2)
+
+train_cutoff = years[train_years - 1]  # Last year for training
+val_cutoff = years[train_years + val_years - 1]  # 
+
+train_df = df[df['year'] <= train_cutoff]
+val_df = df[(df['year'] > train_cutoff) & (df['year'] <= val_cutoff)]
+test_df = df[df['year'] > val_cutoff]
+```
 
 ```{python}
-train_df = df[df['year'] <= cutoff].copy()
-test_df = df[df['year'] > cutoff].copy()
+# train_df = df[df['year'] <= cutoff].copy()
+# test_df = df[df['year'] > cutoff].copy()
 ```
 
 ::: {.panel-tabset}
@@ -90,6 +110,12 @@ test_df = df[df['year'] > cutoff].copy()
 ```{python}
 #| code-fold: true
 render_table(train_df)
+```
+
+### Valid DataFrame
+
+```{python}
+render_table(val_df)
 ```
 
 ### Test DataFrame
@@ -103,7 +129,19 @@ render_table(test_df)
 
 ```{python}
 #| code-fold: true
-df['split'] = df['year'].apply(lambda x: "Train" if x <= cutoff else "Test")
+# df['split'] = df['year'].apply(lambda x: "Train" if x <= cutoff else "Test")
+```
+
+```{python}
+def assign_split(x, train_cutoff, val_cutoff):
+    if x <= train_cutoff:
+        return "Train"
+    elif x <= val_cutoff:
+        return "Val"
+    else:
+        return "Test"
+
+df['split'] = df['year'].apply(lambda x: assign_split(x, train_cutoff, val_cutoff))
 ```
 
 ```{python}
@@ -146,11 +184,14 @@ user_input
 split_plot
 ```
 
-### Train and Test Set
+### Train, Valid and Test Set
 ```{python}
 target = "yield"
 X_train = train_df.drop(columns=target)
 y_train = train_df[target]
+
+X_val = val_df.drop(columns=target)
+y_val = val_df[target]
 
 X_test = test_df.drop(columns=target)
 y_test = test_df[target]
@@ -555,6 +596,7 @@ from rice_yield.utils.paths import get_output_dir
 
 
 ```{python}
+from sklearn.model_selection import cross_val_score
 model_results = {}
 
 for model_name, model_params in search_spaces.items():
@@ -582,21 +624,23 @@ for model_name, model_params in search_spaces.items():
             (model_name.lower(), model_params['model_class'](**best_trial.params))
         ])
 
-        cv_results = cross_validate(
-        best_model,
-        X_train, 
-        y_train,
-        cv=tscv,
-        scoring="neg_root_mean_squared_error",
-        return_train_score=True)
+        # cv_results = cross_validate(
+        # best_model,
+        # X_train, 
+        # y_train,
+        # cv=tscv,
+        # scoring="neg_root_mean_squared_error",
+        # return_train_score=True)
 
-        # Compute mean and std for train/test
-        rmse_train = -cv_results["train_score"]
-        # rmse_train = cv_results["train_score"]
-        # rmse_test = cv_results["test_score"]
-        rmse_test = -cv_results["test_score"]
+        # # Compute mean and std for train/test
+        # rmse_train = -cv_results["train_score"]
+        # # rmse_train = cv_results["train_score"]
+        # # rmse_test = cv_results["test_score"]
+        # rmse_test = -cv_results["test_score"]
 
         best_model.fit(X_train, y_train)
+
+        train_scores = cross_val_score(best_model, X_train, y_train, cv=tscv, scoring='neg_root_mean_squared_error')
 
         output_folder = get_output_dir() / "trained_models"
         save_model(best_model, model_name, output_folder)
@@ -607,8 +651,8 @@ for model_name, model_params in search_spaces.items():
         "best_params": opt.get_best_params(study),
         "study": study,
         "cv_results": {
-            "train_score": rmse_train,
-            "test_score": rmse_test
+            "train_score": train_scores,
+            # "test_score": rmse_test
         }
     }
     mlf.end_run()
@@ -634,9 +678,9 @@ def prediction_error_plot():
     model = model_info["model"]
 
     # Call the reusable plot function
-    fig, ax = plot_prediction_error(y_train, model.predict(X_train))
+    fig, ax = plot_prediction_error(y_val, model.predict(X_val))
     
-    fig.suptitle(f"Prediction Error for {input.models()}", fontsize=14, fontweight='bold', fontfamily='Arial')
+    fig.suptitle(f"Validation Set Error for {input.models()}", fontsize=14, fontweight='bold', fontfamily='Arial')
     return fig
 
 ```
@@ -659,16 +703,15 @@ def dropdwn_models():
 def plot_train_test():
     model_name = input.model_scores()
     cv = model_results[model_name]["cv_results"]
+    val_scores = cross_val_score(best_model, X_val, y_val, cv=tscv, scoring='neg_root_mean_squared_error')
 
     fig, ax = plot_train_test_scores(
-        train_scores=cv['train_score'],
-        test_scores=cv['test_score'],
+        train_scores=-cv['train_score'],
+        test_scores=-val_scores,
         model_name=model_name,
         scoring_name="RMSE"
     )
     return fig
-
-
 ```
 
 
@@ -677,6 +720,8 @@ data_dir = get_data_dir("final")
 save_model(model_results['SVR']['model'], 'svr', get_output_dir()/"best_model")
 X_train.to_csv(data_dir/"X_train.csv", index=False)
 X_test.to_csv(data_dir/"X_test.csv", index=False)
+X_val.to_csv(data_dir/"X_val.csv", index=False)
 y_train.to_csv(data_dir/"y_train.csv", index=False)
+y_val.to_csv(data_dir/"y_val.csv", index=False)
 y_test.to_csv(data_dir/"y_test.csv", index=False)
 ```
