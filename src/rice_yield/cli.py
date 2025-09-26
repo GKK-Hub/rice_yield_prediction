@@ -34,7 +34,7 @@ def main() -> None:
 
     elif args.command == "combine":
         input_dir = get_data_dir("cleaned")
-        output_file = get_data_file(get_data_dir("final"), "rice_yield.csv")
+        output_file = get_data_file(get_data_dir("final"), "combine.csv")
         combine_cleaned_files(input_dir, output_file)
 
 
