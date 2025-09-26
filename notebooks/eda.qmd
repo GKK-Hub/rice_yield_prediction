@@ -325,8 +325,12 @@ Similarly, `area` and `production` are infact strongly correlated. Also, `yield`
 
 
 ```{python}
-filtered_df['temperature'] = (filtered_df['min_temperature'] + filtered_df['max_temperature']) / 2
-filtered_df.drop(columns=['irrigated_area', 'production', 'max_temperature', 'min_temperature'], inplace=True)
+# filtered_df['temperature'] = round((filtered_df['max_temperature'] + filtered_df['min_temperature']) / 2, 2)
+
+filtered_df['area_ratio'] = round(filtered_df['irrigated_area'] / filtered_df['area'], 2)
+filtered_df['temperature'] = round((filtered_df['max_temperature'] + filtered_df['min_temperature'] / 2), 2)
+# Finally, check once, take maximum temperature and do shap.
+filtered_df.drop(columns=['area', 'irrigated_area', 'production', 'min_temperature', 'max_temperature','pot_etranspiration', 'precipitation'], inplace=True)
 ```
 
 
