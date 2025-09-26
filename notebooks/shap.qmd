@@ -40,8 +40,10 @@ from rice_yield.utils.paths import get_data_dir
 
 data_dir = get_data_dir("final")
 X_train = pd.read_csv(data_dir/"X_train.csv")
-X_test = pd.read_csv(data_dir/"X_test.csv")
-X_test.head()
+X_val = pd.read_csv(data_dir/"X_val.csv")
+
+train_df = pd.concat([X_train, X_val], axis=0)
+train_df
 ```
 
 
@@ -51,25 +53,26 @@ import joblib
 from rice_yield.utils.paths import get_output_dir
 from rice_yield.utils.notebook_utils import load_model
 
-best_model_path = get_output_dir()/"best_model/svr.joblib"
+best_model_path = get_output_dir()/"best_model/rf.joblib"
 best_model = load_model(best_model_path)
 best_model
 ```
 
+
 ```{python}
 preprocessor = best_model.named_steps['preprocessor']
-estimator = best_model.named_steps['svr']
+estimator = best_model.named_steps['randomforest']
 
-X_train_preprocessed = preprocessor.transform(X_train)  # fit_transform not needed, already fitted
-X_test_preprocessed = preprocessor.transform(X_test)
+X_train_preprocessed = preprocessor.transform(train_df).toarray()
 
 estimator
 ```
 
-
 ```{python}
 #| output: false
-feature_names = best_model.named_steps['preprocessor'].get_feature_names_out()
+feature_names = preprocessor.get_feature_names_out()
+# masker = shap.maskers.Independent(X_train_preprocessed)
+# background_data = shap.sample(X_train_preprocessed, 100)  # Sample 100 points
 explainer = shap.Explainer(estimator.predict, X_train_preprocessed, feature_names=feature_names)
 
 shap_values = explainer(X_train_preprocessed)
@@ -81,14 +84,12 @@ plt.style.use('fivethirtyeight')
 
 fig_summary, ax_summary = plt.subplots(figsize=(10, 6))
 shap.plots.bar(shap_values)
-# plt.tight_layout()
-# plt.show()
+
 ```
 
 
 ```{python}
 fig_beeswarm, ax_beeswarm = plt.subplots()
-shap.plots.beeswarm(shap_values)
-# plt.tight_layout()
-# plt.show()
+shap.plots.beeswarm(shap_values, max_display=20)
+
 ```
