@@ -11,7 +11,8 @@ from typing import Callable, Any
 
 def create_study(study_name: str,
                  direction: str,
-                 storage: str) -> optuna.Study:
+                 storage: str,
+                 sampler: optuna.samplers.BaseSampler) -> optuna.Study:
     """
     Create a new Optuna study or load an existing one.
 
@@ -29,6 +30,7 @@ def create_study(study_name: str,
         study_name=study_name,
         direction=direction,
         storage=storage,
+        sampler=sampler,
         load_if_exists=True
     )
 
