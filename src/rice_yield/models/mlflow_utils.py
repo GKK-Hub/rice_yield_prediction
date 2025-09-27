@@ -4,15 +4,18 @@
 # Functions for logging experiments, metrics, and artifacts to MLflow.
 # """
 
+# Standard library imports
+import os
+from typing import Optional
+
+# Third-party library imports
 import mlflow
 import mlflow.sklearn as mlflow_sklearn
+import pandas as pd
 from mlflow.data import from_pandas  # type: ignore
 from mlflow.data.dataset import Dataset
-import os
-import pandas as pd
-from sklearn.pipeline import Pipeline
-from typing import Optional
 from mlflow.data.http_dataset_source import HTTPDatasetSource
+from sklearn.pipeline import Pipeline
 
 
 def start_run(model_name: str,
