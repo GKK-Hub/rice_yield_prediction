@@ -11,7 +11,7 @@ Workflow:
 import pandas as pd
 from pathlib import Path
 
-from rice_yield.utils import dataframe_utils as du
+from rice_yield.utils.dataframe_utils import read_csv, write_csv
 from rice_yield.utils.paths import get_data_dir, get_data_file
 
 
@@ -33,7 +33,7 @@ def combine_cleaned_files(input_dir: Path, output_file: Path) -> None:
     combined_df = None
 
     for file in files:
-        df = du.read_csv(file)
+        df = read_csv(file)
 
         if combined_df is None:
             combined_df = df
@@ -46,7 +46,7 @@ def combine_cleaned_files(input_dir: Path, output_file: Path) -> None:
             )
 
     if combined_df is not None:
-        du.write_csv(combined_df, output_file)
+        write_csv(combined_df, output_file)
         print(f"Combined dataset written to {output_file}")
     else:
         print("No dataframes were combined; nothing to write.")
