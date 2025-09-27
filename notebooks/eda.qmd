@@ -130,7 +130,23 @@ render_table(pd.DataFrame(df['dist_name'].unique(), columns=['Districts']))
 There are `31` unique districts in our dataset. We shorten the column names in our dataset for simplification.
 
 ```{python}
-df = rename_columns(df)
+rename_dictionary = {
+        'rice_area_1000_ha': 'area',
+        'rice_production_1000_tons': 'production',
+        'rice_yield_kg_per_ha': 'yield',
+        'average_actual_evapotranspiration': 'act_etranspiration',
+        'average_potential_evapotranspiration': 'pot_etranspiration',
+        'rice_irrigated_area_1000_ha': 'irrigated_area',
+        'average_precipitation': 'precipitation',
+        'average_water_deficit': 'water_deficit',
+        'average_maximum_temperature': 'max_temperature',
+        'average_minimum_temperature': 'min_temperature',
+        'average_rainfall': 'rainfall'
+    }
+```
+
+```{python}
+df = rename_columns(df, rename_dictionary)
 render_table(pd.DataFrame(df.columns, columns=['Variables/Attributes']))
 ```
 
