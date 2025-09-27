@@ -4,15 +4,18 @@
 # Functions for managing Optuna studies, trials, and optimization workflows.
 # """
 
+# Standard library imports
+from typing import Any, Callable
+
+# Third-party library imports
 import optuna
+from optuna.samplers import RandomSampler
 from optuna.trial import Trial
-from typing import Callable, Any
 
 
 def create_study(study_name: str,
                  direction: str,
-                 storage: str,
-                 sampler: optuna.samplers.BaseSampler) -> optuna.Study:
+                 storage: str) -> optuna.Study:
     """
     Create a new Optuna study or load an existing one.
 
@@ -26,13 +29,12 @@ def create_study(study_name: str,
     Returns:
         optuna.Study: The Optuna study object.
     """
-    return optuna.create_study(
-        study_name=study_name,
-        direction=direction,
-        storage=storage,
-        sampler=sampler,
-        load_if_exists=True
-    )
+    sampler = RandomSampler(seed=9999)
+    return optuna.create_study(study_name=study_name,
+                               direction=direction,
+                               storage=storage,
+                               sampler=sampler,
+                               load_if_exists=True)
 
 
 def run_optimization(study: optuna.Study,
