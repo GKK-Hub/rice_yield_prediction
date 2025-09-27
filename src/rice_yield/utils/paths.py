@@ -67,21 +67,9 @@ def get_validation_dir() -> Path:
     return VALID_DIR
 
 
-def create_model_dir(model_name: str) -> Path:
-    """
-    Build a portable path to the validation curve folder for a given model.
-
-    Args:
-        model_name (str): Name of the model (e.g., "Random Forest").
-
-    Returns:
-        Path: Full path to the model's validation curve directory.
-    """
-    safe_name = model_name.replace(" ", "_")
-    folder = VALID_DIR / safe_name
-    folder.mkdir(parents=True, exist_ok=True)
-    return folder
-
-
 def get_output_dir() -> Path:
     return OUTPUT_DIR
+
+
+if __name__ == "__main__":
+    print(__doc__)
