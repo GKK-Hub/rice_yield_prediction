@@ -12,7 +12,7 @@ format:
     toc-depth: 3
     toc-title: Chapters
     theme: zephyr
-    # monofont: "JetBrains Mono"
+    monofont: "JetBrains Mono"
     page-layout: full
     code-tools: true
     include-in-header: 
@@ -33,19 +33,22 @@ jupyter: python3
 
 
 ---
-The objective of this project is to predict rice yield given environmental parameters and the impact of the parameters on rice yield. This could help agronomists and agricultural scientists to make informed decisions in the face of climate change.
+The objective of this project is to predict rice yield using given parameters and the impact of the parameters on rice yield. This could help agronomists and agricultural scientists to make informed decisions.
 
-So, we\'re using the ICRISAT District Level Database which is real-world database compiled from various government agencies. Here\'s a short version about this dataset.
+So, we\'re using the ICRISAT District Level Database which is real-world database compiled with the data of various government agencies. Here\'s a short version about this data given on the official site.
+
 
 <blockquote>
 The District Level Database (DLD) for Indian agriculture and allied sectors provides a comprehensive one-stop shop for data on rural sector that enables testing of key research hypotheses, identification of relevant districts / regions for technology dissemination, promoting rural pro-poor programs / development initiatives and identification of relevant representative districts for micro level assessment.
 </blockquote>
 
-Unfortunately, there\'s no API to download the data progrmatically. So, we\'ve downloaded the data manually, cleaned and combined into a single dataset.
+Unfortunately, there\'s no API to download the data programatically. So, we\'ve downloaded the data manually, cleaned and combined into a single dataset.
 
-In this file, we are going to explore the cleaned dataset by visualizing distribution of predictors and response, identifying correlation between variables, and checking data types. Finally, we\'ll do feature engineering where we engineer columns that might yield better results than the original ones.
+In this file, we\'re going to explore the cleaned dataset by visualizing distribution of predictors and response, identifying correlation between variables, and checking data types. Finally, we\'ll do feature engineering where we engineer columns that might yield better results than the original ones.
 
 Dataset Link: [ICRISAT District Level Crop Data](http://data.icrisat.org/dld/src/crops.html)
+
+---
 
 
 ## Chapter 1: Exploring the Data
@@ -56,7 +59,14 @@ import random
 import warnings
 import pandas as pd
 import numpy as np
+from rice_yield.utils.paths import get_data_file, get_data_dir
+from rice_yield.utils.notebook_utils import render_table, render_print
+from rice_yield.utils.dataframe_utils import rename_columns, write_csv
+from rice_yield.utils.plot_utils import show_correlation_heatmap, show_distribution
+```
 
+```{python}
+#| code-fold: true
 warnings.filterwarnings('ignore')
 
 SEED = 42
@@ -68,14 +78,9 @@ np.random.seed(SEED)
 pd.set_option('display.notebook_repr_html', True)
 pd.set_option('display.float_format', '{:.2f}'.format)
 pd.set_option('display.max_rows', 10)
-
 ```
 
-
 ```{python}
-from rice_yield.utils.paths import get_data_file, get_data_dir
-from rice_yield.utils.notebook_utils import render_table
-
 file_path = get_data_file(get_data_dir("final"), "combine.csv")
 
 df = pd.read_csv(file_path)
@@ -84,6 +89,7 @@ render_table(df.head())
 ```
 
 The columns in the dataset are shown below.
+
 ```{python}
 #| code-fold: true
 render_table(pd.DataFrame(df.columns, columns=['Variables/Attributes']))
@@ -101,17 +107,20 @@ Let\'s check for missing values in the dataset. Sometimes, missing values are en
 
 ::: {.panel-tabset}
 ### -1 Found
+
 ```{python}
 render_table(pd.DataFrame(df[df == -1].any(), columns=['-1 Found']))
 ```
+
 ### null Found
+
 ```{python}
 render_table(pd.DataFrame(df.isnull().any(), columns=['null Found']))
 ```
+
 :::
 
 There are no missing values in our dataset.
-
 
 ```{python}
 render_table(pd.DataFrame(df['dist_name'].unique(), columns=['Districts']))
@@ -120,15 +129,12 @@ render_table(pd.DataFrame(df['dist_name'].unique(), columns=['Districts']))
 There are `31` unique districts in our dataset. We shorten the column names in our dataset for simplification.
 
 ```{python}
-from rice_yield.utils.dataframe_utils import rename_columns
-
 df = rename_columns(df)
 render_table(pd.DataFrame(df.columns, columns=['Variables/Attributes']))
 ```
 
 
 ```{python}
-from rice_yield.utils.notebook_utils import render_print
 n_years = df['year'].nunique()
 min_year = df['year'].min()
 max_year = df['year'].max()
@@ -146,12 +152,10 @@ render_table(district_data_count)
 
 More than half of the districts have data for all the 26 years. So, we are removing some districts that do not have enough data (i.e. <= 20 years).
 
-
 ```{python}
 low_data_districts = district_data_count[district_data_count['count'] <= 20].index
 render_table(pd.DataFrame(low_data_districts))
 ```
-
 
 
 ```{python}
@@ -161,15 +165,12 @@ district_mask = ~df['dist_name'].isin(low_data_districts)
 ```
 
 
-
 ```{python}
 filtered_df = df[district_mask]
 render_table(pd.DataFrame(filtered_df['dist_name'].unique(), columns=['Filtered Districts']))
 ```
 
-
 We can observe that low-data districts have been removed from our dataset.
-
 
 ```{python}
 #| output: false
@@ -182,8 +183,6 @@ del df
 ## Chapter 2: Distribution of Variables
 
 ```{python}
-from rice_yield.utils.plot_utils import show_distribution
-
 user_input, dist_plot, dist_remarks = show_distribution(filtered_df.copy())
 user_input
 dist_plot
@@ -196,6 +195,7 @@ dist_remarks
 
 ::: {.panel-tabset}
 ### Potential Evapotranspiration
+
 ```{python}
 #| code-fold: true
 required_columns=['year', 'dist_name', 'pot_etranspiration']
@@ -203,7 +203,6 @@ render_table(filtered_df[filtered_df['pot_etranspiration'] < 120][required_colum
 max_height="400px")
 render_print("We can observe that Nilgiris had the lowest potential evapotranspiration because of its natural low temperature. So, they are not actually outliers, though statistically they are. Removing these data can have impact on model prediction, so wer\'re not removing them.")
 ```
-
 
 ### Area
 
@@ -219,7 +218,6 @@ render_print("These districts were among the highest producers of rice in the st
 
 ### Irrigated Area
 
-
 ```{python}
 #| code-fold: true
 
@@ -228,9 +226,7 @@ render_table(filtered_df[filtered_df['irrigated_area'] > 190][required_columns],
 render_print("Same reasoning as `rice_area`.")
 ```
 
-
 ### Production
-
 
 ```{python}
 #| code-fold: true
@@ -240,9 +236,7 @@ render_table(filtered_df[filtered_df['production'] > 700][required_columns], max
 render_print("As these districts grow more rice, they had high production of rice.")
 ```
 
-
 ### Yield
-
 
 ```{python}
 #| code-fold: true
@@ -251,7 +245,6 @@ required_columns = ['year', 'dist_name', 'yield']
 render_table(filtered_df[filtered_df['yield'] < 1100][required_columns], max_height="400px")
 render_print("These values doesn't appears to be outliers as they occurred more than once and Virudhunagar which occurred only once is a neighbor of Sivagangai. Unlikely to be an outlier because of data manipulation or incorrect entry.")
 ```
-
 
 ### Maximum Temperature
 
@@ -263,7 +256,6 @@ render_table(filtered_df[filtered_df['max_temperature'] < 30][required_columns],
 render_print("These Nilgiris and Coimbatore are neighbouring districts and naturally have influence of one on the other. Kanyakumari, which is a coastal district is also known for its cold tempeatures.")
 ```
 
-
 ### Minimum Temperature
 
 ```{python}
@@ -273,7 +265,6 @@ required_columns = ['year', 'dist_name', 'min_temperature']
 render_table(filtered_df[filtered_df['min_temperature'] < 20][required_columns], max_height="400px")
 render_print("Nilgiris had the lowest minimum temperatuere which is due to its natural weather condidtions.")
 ```
-
 
 ### Precipitation
 
@@ -294,44 +285,58 @@ required_columns = ['year', 'dist_name', 'rainfall']
 render_table(filtered_df[filtered_df['rainfall'] > 150][required_columns], max_height="400px")
 render_print("Same reasoning as `rainfall`")
 ```
+
 :::
 
 ---
 
 ## Chapter 4: Correlation Analysis
 
-
 ```{python}
 drop_columns = ['dist_name', 'year']
 corr_df = filtered_df.drop(columns=drop_columns).corr()
 ```
 
-
 ```{python}
-from rice_yield.utils.plot_utils import show_correlation_heatmap
-
 show_correlation_heatmap(corr_df)
 ```
-<br>
-We observed that `area` and `irrigated_area` has very strong correlation. Since rice is a water-intensive crop, this correlation makes sense. So, removing one of the columns reduces complexity and simultaneously we\'re not losing any information. 
 
-Similarly, `area` and `production` are infact strongly correlated. Also, `yield` is calculated by `production` / `area`. So, we can remove either of the columns.
+<br>
+We observed that `area` and `irrigated_area` has very strong correlation. Since rice is a water-intensive crop, this correlation makes sense. 
+
+Similarly, `area` and `production` are infact strongly correlated. Also, `yield` is calculated by `production` / `area`. So,  multicollinearity creates problem when doing inference.
 
 `max_temperature` and `min_temperature` are strongly correlated too. Since `temperature` variable is an important predictor of `yield`, we can take the average temperature instead of removing it.
 </br>
+
 ---
 
 ## Chapter 5: Feature Engineering
 
+```{python}
+filtered_df['area_ratio'] = round(filtered_df['irrigated_area'] / filtered_df['area'], 2)
+filtered_df['avg_temperature'] = round((filtered_df['max_temperature'] + filtered_df['min_temperature'] / 2), 2)
+```
 
 ```{python}
-# filtered_df['temperature'] = round((filtered_df['max_temperature'] + filtered_df['min_temperature']) / 2, 2)
-
-filtered_df['area_ratio'] = round(filtered_df['irrigated_area'] / filtered_df['area'], 2)
-filtered_df['temperature'] = round((filtered_df['max_temperature'] + filtered_df['min_temperature'] / 2), 2)
-# Finally, check once, take maximum temperature and do shap.
 filtered_df.drop(columns=['area', 'irrigated_area', 'production', 'min_temperature', 'max_temperature','pot_etranspiration', 'precipitation'], inplace=True)
 ```
+
+<br>
+We\'re removing `area` and `irrigated_area` as we\'ve engineered a new column - `area_ratio, which gets a maxiumum value of 1 when `area` == `irrigated_area` and less than 1 when `irrigated_area` is less than the `area`.
+
+`production` and `area` are highly corrleated and we\'re removing one of the columns to address multicollinearity.
+
+We\'ve replaced `min_temperature` and `max_temperature` with the `avg_temperature`.
+
+Also, `pot_etranspiration` and `precipitation` are removed due to the following definition from ICRISAT website:
+
+<blockquote>
+Climate Water deficit the cumulative difference between the potential evapotranspiration and precipitation during a specified period in which the precipitation is the smaller of the two
+</blockquote>
+
+So, we retain `water_deficit` and remove other two columns as we can infer the two variables\' effect from `water_defict`
+</br>
 
 
 ```{python}
@@ -340,7 +345,6 @@ render_table(filtered_df)
 
 
 ```{python}
-from rice_yield.utils.dataframe_utils import write_csv
 write_csv(filtered_df, get_data_file(get_data_dir("final"), "rice-yield.csv"))
 ```
 
