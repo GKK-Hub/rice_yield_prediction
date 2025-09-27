@@ -17,15 +17,11 @@ import seaborn as sns
 from htmltools import Tag, TagList, tags
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from PIL import Image
 from shiny.express import input, render, ui
 from sklearn.metrics import PredictionErrorDisplay
 from sklearn.model_selection import BaseCrossValidator, ValidationCurveDisplay
 from sklearn.pipeline import Pipeline
 
-# Local/relative imports
-from .notebook_utils import get_model_names, get_param_names, get_plot_path
-from .paths import get_validation_dir
 
 warnings.filterwarnings('ignore')
 
@@ -265,51 +261,6 @@ def validation_curve_display(estimator: Pipeline,
                 fontsize=11)
 
     return fig, ax
-
-
-def show_validation_curves():
-    base_path = get_validation_dir()
-    model_names = get_model_names(base_path)
-    default_model = model_names[0] if model_names else None
-
-    @render.ui
-    def dropdown_model():
-        return ui.input_select(id='model',
-                               label='Select Model',
-                               choices=model_names,
-                               selected=default_model)
-
-    def model_folder():
-        return base_path / input.model()
-
-    def available_params():
-        model = model_folder()
-        return get_param_names(model)
-
-    @render.ui
-    def dropdown_param():
-        params = available_params()
-        default_param = params[0] if params else None
-        return ui.input_select(id='param',
-                               label='Select Hyperparameter',
-                               choices=params,
-                               selected=default_param)
-
-    @render.plot(width=800, height=500)  # type: ignore
-    def show_plot():
-        plot_path = get_plot_path(model_folder(), input.param())
-        if not plot_path.exists():
-            return None
-        fig, ax = plt.subplots(figsize=(10, 20))
-        plot = Image.open(plot_path)
-        ax.imshow(plot)
-        ax.axis('off')  # Hide axes for image display
-        ax.set_title(f"{input.model()} — {input.param()}",
-                     fontdict={'fontsize': 16,
-                               'fontweight': 'bold',
-                               'family': 'Arial'})
-        plot.close()
-    return dropdown_model, dropdown_param, show_plot
 
 
 def plot_prediction_error(
