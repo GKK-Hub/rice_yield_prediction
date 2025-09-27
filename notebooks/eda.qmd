@@ -55,13 +55,15 @@ Dataset Link: [ICRISAT District Level Crop Data](http://data.icrisat.org/dld/src
 
 ```{python}
 #| code-fold: true
+
+import numpy as np
+import pandas as pd
 import random
 import warnings
-import pandas as pd
-import numpy as np
-from rice_yield.utils.paths import get_data_file, get_data_dir
-from rice_yield.utils.notebook_utils import render_table, render_print
+
 from rice_yield.utils.dataframe_utils import rename_columns, write_csv
+from rice_yield.utils.notebook_utils import render_table, render_print
+from rice_yield.utils.paths import get_data_file, get_data_dir
 from rice_yield.utils.plot_utils import show_correlation_heatmap, show_distribution
 ```
 
@@ -74,7 +76,6 @@ SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
 
-# pd.set_option('display.precision', 2)
 pd.set_option('display.notebook_repr_html', True)
 pd.set_option('display.float_format', '{:.2f}'.format)
 pd.set_option('display.max_rows', 10)
