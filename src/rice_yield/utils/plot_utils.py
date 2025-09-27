@@ -4,26 +4,30 @@
 # Reusable plotting functions for data exploration and analysis.
 # """
 
-import pandas as pd
+# Standard library imports
 import warnings
-import numpy as np
 from typing import Tuple
-import matplotlib.pyplot as plt
+
+# Third-party library imports
 import matplotlib.colors as mcolors
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
+from htmltools import Tag, TagList, tags
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from PIL import Image
-from shiny.express import ui, render, input
-from htmltools import TagList, tags, Tag
-from sklearn.model_selection import ValidationCurveDisplay, BaseCrossValidator
+from shiny.express import input, render, ui
 from sklearn.metrics import PredictionErrorDisplay
+from sklearn.model_selection import BaseCrossValidator, ValidationCurveDisplay
 from sklearn.pipeline import Pipeline
-from .paths import get_validation_dir
+
+# Local/relative imports
 from .notebook_utils import get_model_names, get_param_names, get_plot_path
+from .paths import get_validation_dir
 
 warnings.filterwarnings('ignore')
-# import matplotlib.colors as mcolors
 
 
 def show_correlation_heatmap(corr_df: pd.DataFrame) -> render.plot:
