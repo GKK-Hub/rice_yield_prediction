@@ -50,6 +50,19 @@ def end_run() -> None:
     mlflow.end_run()
 
 
+def set_source_url(url: str) -> HTTPDatasetSource:
+    """
+    Creates and returns an HTTPDatasetSource from the given URL.
+
+    Args:
+        url: The HTTP URL for the dataset source
+
+    Returns:
+        HTTPDatasetSource instance configured with the provided URL
+    """
+    return HTTPDatasetSource(url)
+
+
 def set_experiment_if_not_exists(experiment_name: str) -> None:
     experiment = mlflow.get_experiment_by_name(experiment_name)
     if experiment is None:
