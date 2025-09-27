@@ -6,9 +6,13 @@
 
 import mlflow
 import mlflow.sklearn as mlflow_sklearn
+from mlflow.data import from_pandas  # type: ignore
+from mlflow.data.dataset import Dataset
 import os
 import pandas as pd
 from sklearn.pipeline import Pipeline
+from typing import Optional
+from mlflow.data.http_dataset_source import HTTPDatasetSource
 
 
 def start_run(model_name: str,
@@ -36,7 +40,6 @@ def start_run(model_name: str,
     else:
         experiment_name = experiment_type
     set_experiment_if_not_exists(experiment_name)
-    # mlflow.set_experiment(experiment_name)
     return mlflow.start_run(run_name=run_name, nested=nest)
 
 
@@ -62,13 +65,38 @@ def log_params(params: dict) -> None:
     mlflow.log_params(params)
 
 
-def log_metrics(metric_name: str, metric_value: float) -> None:
-    mlflow.log_metric(metric_name, metric_value)
+def log_metrics(metrics: dict) -> None:
+    for metric, value in metrics.items():
+        mlflow.log_metric(metric, value)
+
+
+def pd_dataset(data: pd.DataFrame,
+               source: HTTPDatasetSource,
+               target: str,
+               name: str) -> Dataset:
+    """
+    Returns an MLflow dataset with source, target and a unique name
+    """
+    return from_pandas(df=data,
+                       source=source,
+                       name=name,
+                       targets=target)
 
 
 def set_run_tags(tags: dict) -> None:
     for key, value in tags.items():
         mlflow.set_tag(key, value)
+
+
+def get_active_run_id() -> Optional[str]:
+    """
+    Returns the `run_id` of the active run if exists else return None
+    """
+    active_run = mlflow.active_run()
+    if active_run is None:
+        return None
+    else:
+        return active_run.info.run_id
 
 
 def log_model(model: Pipeline,
@@ -84,6 +112,13 @@ def log_model(model: Pipeline,
     mlflow_sklearn.log_model(model,
                              name=model_name,
                              input_example=input_example)
+
+
+def log_input(data: Dataset, context: str) -> None:
+    """
+    Logs the input dataset into MLflow.
+    """
+    mlflow.log_input(data, context=context)
 
 
 def create_folder(folder_path: str) -> None:
