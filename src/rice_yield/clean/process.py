@@ -17,21 +17,21 @@ from rice_yield.utils.paths import get_data_dir, get_data_file
 
 def process_file(file_path: Path, output_dir: Path) -> None:
     """
-        Processes a single file and save the cleaned version
+    Processes a single file and save the cleaned version
 
-        Args:
-            `file_path` (`Path`) - Input file path
-            `output_dir` (`Path`) - Directory for the file to be saved
-        Returns:
-            `None`
+    Args:
+        `file_path` (`Path`) - Input file path
+        `output_dir` (`Path`) - Directory for the file to be saved
+    Returns:
+        `None`
     """
-    monthly_data_files = ['precipitation',
-                          'minimum_temperature',
-                          'maximum_temperature',
-                          'water_deficit',
-                          'actual_evapotranspiration',
-                          'potential_evapotranspiration',
-                          'rainfall']
+    monthly_data_files = ["precipitation",
+                          "minimum_temperature",
+                          "maximum_temperature",
+                          "water_deficit",
+                          "actual_evapotranspiration",
+                          "potential_evapotranspiration",
+                          "rainfall"]
     df = du.read_csv(file_path)
     df = du.drop_location_id(df)
     df = du.standardize_district_names(df)
@@ -47,17 +47,17 @@ def process_file(file_path: Path, output_dir: Path) -> None:
 
 def process_all_files() -> None:
     """
-        Processes all raw files in `data\raw_files`
+    Processes all raw files in `data\raw_files`
 
-        Args:
-            None
-        Returns:
-            `None`
+    Args:
+        None
+    Returns:
+        `None`
     """
     raw_dir = get_data_dir("raw")
     cleaned_dir = get_data_dir("cleaned")
 
-    for file_path in raw_dir.glob('*.csv'):
+    for file_path in raw_dir.glob("*.csv"):
         process_file(file_path, cleaned_dir)
 
 
