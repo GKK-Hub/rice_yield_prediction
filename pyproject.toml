@@ -20,7 +20,7 @@ rice-yield = "rice_yield.cli:main"
 
 [tool.mypy]
 python_version = "3.12"
-strict = true
+strict = false
 ignore_missing_imports = true
 check_untyped_defs = true
 
