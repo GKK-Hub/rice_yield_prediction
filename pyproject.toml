@@ -13,7 +13,25 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 
-dependencies = []
+dependencies = ["mlflow",
+    "optuna",
+    "scikit-learn",
+    "numpy",
+    "pandas",
+    "shap",
+    "streamlit",
+    "matplotlib",
+    "xgboost",
+    "shiny",
+    "seaborn",
+    "quarto",
+    "htmltools"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "mypy"
+]
 
 [project.scripts]
 rice-yield = "rice_yield.cli:main"
