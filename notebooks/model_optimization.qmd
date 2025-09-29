@@ -40,19 +40,21 @@ In this file, we\'re going to do model training and optimization. Finally, we\'l
 #| code-fold: true
 
 # Standard library imports
-import random
 import warnings
 
 # Third-party library imports
-import mlflow
 import numpy as np
+import optuna
 import pandas as pd
+import shap
 import sklearn
 from shiny.express import input, render, ui
 from sklearn import set_config
 from sklearn.compose import ColumnTransformer
 from sklearn.compose import make_column_selector as selector
-from sklearn.ensemble import AdaBoostRegressor, ExtraTreesRegressor, HistGradientBoostingRegressor, RandomForestRegressor
+from sklearn.ensemble import (AdaBoostRegressor, 
+                             ExtraTreesRegressor, 
+                             RandomForestRegressor)
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import TimeSeriesSplit, cross_val_score
 from sklearn.pipeline import Pipeline
@@ -64,10 +66,18 @@ from xgboost import XGBRegressor
 # Local/project imports
 import rice_yield.models.mlflow_utils as mlf
 import rice_yield.models.optuna_utils as opt
-from rice_yield.models.mlflow_utils import set_run_tags, start_run
+from rice_yield.models.shap_utils import shap_explainer
 from rice_yield.utils.notebook_utils import render_table, save_model
-from rice_yield.utils.paths import get_data_dir, get_data_file, get_output_dir
-from rice_yield.utils.plot_utils import plot_prediction_error, plot_train_test_scores, train_test_plot, validation_curve_display
+from rice_yield.utils.paths import (get_data_dir, 
+                                    get_data_file, 
+                                    get_output_dir, 
+                                    create_folder)
+from rice_yield.utils.plot_utils import (plot_prediction_error, 
+                                        plot_train_test_scores, 
+                                        train_test_plot, 
+                                        validation_curve_display,
+                                        summary_plot,
+                                        beeswarm_plot)
 warnings.filterwarnings("ignore")
 ```
 
@@ -87,7 +97,7 @@ df = pd.read_csv(file_path)
 Let\'s sort the data before splitting the data.
 
 ```{python}
-df = df.sort_values(['year', 'dist_name'], ignore_index=True)
+df = df.sort_values(["year", "dist_name"], ignore_index=True)
 render_table(df)
 ```
 
@@ -98,7 +108,7 @@ We\'ll use 60% of the data for training and the remaining for testing purpose.
 ---
 
 ```{python}
-years = sorted(df['year'].unique())
+years = sorted(df["year"].unique())
 total_years = len(years)
 
 # Calculate number of years for each split
@@ -108,9 +118,9 @@ val_years = int(total_years * 0.2)  # 20 % for vaildating, remaining for testing
 train_cutoff = years[train_years - 1]  # we're indexing an array so we subtract 1, otherwise will get 1 more than train/val_years
 val_cutoff = years[train_years + val_years - 1]  
 
-train_df = df[df['year'] <= train_cutoff]
-val_df = df[(df['year'] > train_cutoff) & (df['year'] <= val_cutoff)]
-test_df = df[df['year'] > val_cutoff]
+train_df = df[df["year"] <= train_cutoff]
+val_df = df[(df["year"] > train_cutoff) & (df["year"] <= val_cutoff)]
+test_df = df[df["year"] > val_cutoff]
 ```
 
 ::: {.panel-tabset}
@@ -145,18 +155,18 @@ def assign_split(x, train_cutoff, val_cutoff):
     else:
         return "Test"
 
-# Creating a new column `split` just for plotting purpose and it doesn't go into training
-df['split'] = df['year'].apply(lambda x: assign_split(x, train_cutoff, val_cutoff))
+# Creating a new column `split` just for plotting purpose and it doesn"t go into training
+df["split"] = df["year"].apply(lambda x: assign_split(x, train_cutoff, val_cutoff))
 ```
 
 ```{python}
 def show_splits():
     @render.ui() # Creates a drop-down and chooses the `default_choice` by default
     def drop_down_feature():
-        choices = df.columns.difference(['split', 'dist_name', 'year']).tolist()
+        choices = df.columns.difference(["split", "dist_name", "year"]).tolist()
         default_choice = choices[0] if choices else None
-        user_input = ui.input_select('feature', 
-                                     label='Choose Variable',
+        user_input = ui.input_select("feature", 
+                                     label="Choose Variable",
                                      choices=choices,
                                      selected=default_choice)
         return user_input
@@ -204,7 +214,7 @@ tscv = TimeSeriesSplit(n_splits=5)
 
 ## Chapter 7: Data Preprocessing
 
-In this chapter, we\'re using a preprocessing pipleine to transform categorical variable (`dist_name`) and numerical variables (for faster training) in our dataset. Preprocessing of categorical variables are essential as machine learning models don't work with text data natively.
+In this chapter, we\'re using a preprocessing pipleine to transform categorical variable (`dist_name`) and numerical variables (for faster training) in our dataset. Preprocessing of categorical variables are essential as machine learning models don\'t work with text data natively.
 
 
 ```{python}
@@ -225,8 +235,8 @@ categoric_columns = categoric_selector(X_train)
 categoric_transformer = OneHotEncoder(handle_unknown="ignore")
 numeric_transformer = MinMaxScaler()
 
-preprocessor = ColumnTransformer(transformers=[('categoric', categoric_transformer, categoric_columns),
-                                               ('numeric', numeric_transformer, numeric_columns)], 
+preprocessor = ColumnTransformer(transformers=[("categoric", categoric_transformer, categoric_columns),
+                                               ("numeric", numeric_transformer, numeric_columns)], 
                                                 remainder="passthrough", 
                                                 verbose_feature_names_out=False)
 
@@ -238,16 +248,16 @@ preprocessor
 ```{python}
 candidate_models = {
     "Ridge Regression": {
-        "pipeline": Pipeline(steps=[('preprocessor', preprocessor), 
-                                  ('ridge', Ridge(max_iter=1000))]),
+        "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
+                                  ("ridge", Ridge(max_iter=1000))]),
         "param_grid": {
             "ridge__alpha": [0.05, 0.02, 0.01, 0.1, 0.2, 0.5, 1, 2]  # Regularization strength
         }
     },
     
     "Support Vector Regressor": {
-        "pipeline": Pipeline(steps=[('preprocessor', preprocessor), 
-                                  ('svr', SVR(max_iter=500))]),
+        "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
+                                  ("svr", SVR(max_iter=500))]),
         "param_grid": {
             "svr__C": [1, 5, 10, 20, 50],
             "svr__epsilon": [0.1, 1, 1.5, 2],
@@ -256,8 +266,8 @@ candidate_models = {
     },
     
     "Random Forest Regressor": {
-        "pipeline": Pipeline(steps=[('preprocessor', preprocessor), 
-                                  ('rf', RandomForestRegressor())]),
+        "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
+                                  ("rf", RandomForestRegressor())]),
         "param_grid": {
             "rf__n_estimators": [50, 100, 150, 200],
             "rf__max_depth": [3, 5, 8, 10, 12],
@@ -266,8 +276,8 @@ candidate_models = {
     },
 
     "Extra Trees Regressor": {
-        "pipeline": Pipeline(steps=[('preprocessor', preprocessor), 
-                                  ('etr', ExtraTreesRegressor())]),
+        "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
+                                  ("etr", ExtraTreesRegressor())]),
         "param_grid": {
             "etr__n_estimators": [1, 2, 3, 4, 5],
             "etr__max_depth": [1, 2, 3, 4],
@@ -277,8 +287,8 @@ candidate_models = {
     },
     
     "Decision Tree Regressor": {
-        "pipeline": Pipeline(steps=[('preprocessor', preprocessor), 
-                                  ('dt', DecisionTreeRegressor())]),
+        "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
+                                  ("dt", DecisionTreeRegressor())]),
         "param_grid": {
             "dt__max_depth": [1, 2, 3, 4, 5, 8],
             "dt__min_samples_split": [5, 8, 12, 15, 20],
@@ -287,8 +297,8 @@ candidate_models = {
     },
     
     "Ada Boost Regressor": {
-        "pipeline": Pipeline(steps=[('preprocessor', preprocessor), 
-                                  ('ada', AdaBoostRegressor(DecisionTreeRegressor()))]),
+        "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
+                                  ("ada", AdaBoostRegressor(DecisionTreeRegressor()))]),
         "param_grid": {
             "ada__n_estimators": [1, 2, 5, 8, 10],
             "ada__learning_rate": [0.001, 0.01, 1, 1.2, 2, 3],
@@ -296,8 +306,8 @@ candidate_models = {
     },
     
     "XGBoost Regressor": {
-        "pipeline": Pipeline(steps=[('preprocessor', preprocessor),
-                                  ('xgb', XGBRegressor())]),
+        "pipeline": Pipeline(steps=[("preprocessor", preprocessor),
+                                  ("xgb", XGBRegressor())]),
         "param_grid": {
             "xgb__n_estimators": [1, 2, 5, 8, 10],
             "xgb__learning_rate": [0.01, 0.1, 0.2],
@@ -317,17 +327,17 @@ default_model = model_names[0] if model_names else None
 def show_validation_curves():
     @render.ui()
     def dropdown_model():
-        return ui.input_select(id='model',
-                                label='Select Model',
+        return ui.input_select(id="model",
+                                label="Select Model",
                                 choices=model_names,
                                 selected=default_model)
     
     @render.ui()
     def dropdown_param():
-        params = list(candidate_models[input.model()]['param_grid'].keys())
+        params = list(candidate_models[input.model()]["param_grid"].keys())
         default_param = params[0] if params else None
-        return ui.input_select(id='param',
-                                label='Select Hyperparameter',
+        return ui.input_select(id="param",
+                                label="Select Hyperparameter",
                                 choices=params,
                                 selected=default_param)
     
@@ -344,20 +354,20 @@ def show_validation_curves():
             # Check if the parameter exists for the selected model. Because when we change the model directly,
             # the previous model's parameters will still be there briefly and would show error as the changed model
             # doesn't necessarily have previous model's parameter.
-            available_params = list(candidate_models[model_name]['param_grid'].keys())
+            available_params = list(candidate_models[model_name]["param_grid"].keys())
             if param_name not in available_params:
-                # If the current param doesn't exist for this model, use the first available param of the chosen model
+                # If the current param doesn"t exist for this model, use the first available param of the chosen model
                 param_name = available_params[0] if available_params else None
                 
 
             plot_params = {
-                'estimator': candidate_models[model_name]['pipeline'],
-                'X': X_train,
-                'y': y_train,
-                'param_name': param_name,
-                'param_range': candidate_models[model_name]['param_grid'][param_name],
-                'cv': tscv,
-                'scoring': 'neg_mean_absolute_error',
+                "estimator": candidate_models[model_name]["pipeline"],
+                "X": X_train,
+                "y": y_train,
+                "param_name": param_name,
+                "param_range": candidate_models[model_name]["param_grid"][param_name],
+                "cv": tscv,
+                "scoring": "neg_mean_absolute_error",
             }
             
             fig, ax = validation_curve_display(**plot_params)
@@ -463,14 +473,13 @@ def make_objective(model_name, model_class, param_fn):
         params = param_fn(trial)
 
         # Start MLflow run for this trial
-        with start_run(model_name=model_name, 
+        with mlf.start_run(model_name=model_name, 
                        experiment_type="HPO", 
                        run_name=f"{model_name}_trial_{trial.number}", 
                        nest=True) as run:
-            trial.set_user_attr("mlflow_run_id", mlf.get_active_run_id())
             
             # Build pipeline
-            model = Pipeline([('preprocessor', preprocessor), 
+            model = Pipeline([("preprocessor", preprocessor), 
                               (model_name.lower(), model_class(**params))])
 
             mae_scores = cross_val_score(model, 
@@ -488,13 +497,13 @@ def make_objective(model_name, model_class, param_fn):
             mae = -np.mean(mae_scores)
             rmse = -np.mean(rmse_scores)
 
-
-            # Optional: log hyperparameters as tags
-            set_run_tags(params)
-            
-            # Log metrics into MLflow
             mlf.log_metrics({"mae": mae, "rmse": rmse})
             mlf.log_input(dataset, context="training")
+
+
+            mlf.set_run_tags(params)
+            trial.set_user_attr("mlflow_run_id", mlf.get_active_run_id())
+                       
 
         return mae
 
@@ -504,32 +513,33 @@ def make_objective(model_name, model_class, param_fn):
 
 ```{python}
 model_results = {}
-
+output_path = get_output_dir()
+mlf.set_tracking_uri(f"file:///{output_path}/mlruns")
 for model_name, model_params in search_spaces.items():
     with mlf.start_run(model_name, "HPO", f"{model_name}_optimization") as parent_run:
-
+        create_folder(get_output_dir())
         study = opt.create_study(study_name=f"{model_name}_Study",
                                  direction="minimize",
-                                 storage="sqlite:///../outputs/models_db.sqlite3")
+                                 storage=f"sqlite:///{output_path}/models_db.sqlite3")
 
-        print("Optimization Started for", model_name)
         objective_func = make_objective(model_name,
                                         model_params["model_class"],
                                         model_params["params"])
+        optuna.logging.set_verbosity(optuna.logging.WARNING)                                     
         study.optimize(objective_func, n_trials=10)
-        print("Optimization completed for", model_name)
+        
 
         best_trial = opt.get_best_trial(study)
         best_run_id = opt.get_best_run_id(study)
 
         mlf.set_run_tags({"best_trial_number": opt.get_best_trail_number(study)})
-        mlf.log_input(dataset, context='training')
+        mlf.log_input(dataset, context="training")
         mlf.log_params(opt.get_best_params(study))
         mlf.log_metrics({"mae": best_trial.value})
 
 
-        best_model = Pipeline([('preprocessor', preprocessor),
-                               (model_name.lower(), model_params['model_class'](**best_trial.params))])
+        best_model = Pipeline([("preprocessor", preprocessor),
+                               (model_name.lower(), model_params["model_class"](**best_trial.params))])
 
         # Essential to fit the model to be used for `prediction_error_plot`
         # Just doing hyperparameter optimization, doesn't fit the model to be called predict method on
@@ -539,10 +549,10 @@ for model_name, model_params in search_spaces.items():
                                        X_train, 
                                        y_train, 
                                        cv=tscv, 
-                                       scoring='neg_mean_absolute_error') 
+                                       scoring="neg_mean_absolute_error") 
 
         output_folder = get_output_dir() / "trained_models"
-        save_model(best_model, model_name, output_folder)
+        save_model(best_model, model_name.lower(), output_folder)
 
         model_results[model_name] = {
                                     "model": best_model,
@@ -558,9 +568,9 @@ for model_name, model_params in search_spaces.items():
 
 ```{python}
 @render.ui
-def dropdon_models():
+def dropdown_models():
     return ui.input_select(id="models",
-                           label="Select Model(s)",
+                           label="Select Model",
                            choices=sorted(model_results.keys()))
 
 @render.plot
@@ -570,8 +580,8 @@ def prediction_error_plot():
     fig, ax = plot_prediction_error(y_val, model.predict(X_val))
     fig.suptitle(f"Validation Set Error for {input.models()}", 
                  fontsize=14, 
-                 fontweight='bold', 
-                 fontfamily='Arial')
+                 fontweight="bold", 
+                 fontfamily="Arial")
     return fig
 
 ```
@@ -593,9 +603,9 @@ def plot_train_test():
                                  X_val, 
                                  y_val, 
                                  cv=tscv, 
-                                 scoring='neg_mean_absolute_error')
+                                 scoring="neg_mean_absolute_error")
 
-    fig, ax = plot_train_test_scores(train_scores=-cv['train_score'],
+    fig, ax = plot_train_test_scores(train_scores=-cv["train_score"],
                                      test_scores=-val_scores,
                                      model_name=model_name,
                                      scoring_name="MAE")
@@ -604,17 +614,58 @@ def plot_train_test():
 
 
 ## Training on  Train + Val Data before Deployment
+
 ```{python}
 X_train = pd.concat([X_train, X_val], axis=0)
 y_train = pd.concat([y_train, y_val], axis=0)
 
-best_model = model_results['RandomForest']['model']
+best_model = model_results["RandomForest"]["model"]
 best_model.fit(X_train, y_train)
+```
+
+
+# Chapter 9: SHAP Analysis
+
+```{python}
+full_train_df = pd.concat([X_train, X_val], axis=0)
+render_table(full_train_df)
+```
+
+```{python}
+#| output: false
+best_model_path = get_output_dir()/"trained_models/randomforest.joblib"
+
+shap_val = shap_explainer(best_model_path, full_train_df, "randomforest")
+```
+
+```{python}
+# import matplotlib.pyplot as plt
+# plt.style.use("fivethirtyeight")
+
+# fig_summary, ax_summary = plt.subplots(figsize=(15, 10))
+# shap.plots.bar(shap_val, ax=ax_summary)
+# plt.close()
+```
+
+
+```{python}
+# plt.style.use("fivethirtyeight")
+# fig_beeswarm, ax_beeswarm = plt.subplots(figsize=(15, 10))
+# shap.plots.beeswarm(shap_val, max_display=20, ax=ax_beeswarm, plot_size=None)
+# plt.close()
+```
+
+```{python}
+summary_plot(shap_val, max_display=20)
+```
+
+```{python}
+beeswarm_plot(shap_val, max_display=20)
 ```
 
 ```{python}
 data_dir = get_data_dir("final")
-save_model(best_model, 'rf', get_output_dir()/"best_model")
+save_model(best_model, "randomforest", get_output_dir()/"best_model")
 
 X_train.to_csv(data_dir/"X_train.csv", index=False)
 X_test.to_csv(data_dir/"X_test.csv", index=False)
