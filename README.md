@@ -117,12 +117,12 @@ cd outputs
 Take a new terminal and run:
 ```
 # Start MLflow UI
-mlflow 
+mlflow ui
 ```
 
 If it doesn't re-direct to a browser window, click on the local host url from the terminal output.
 
-Take a new terminal and run:
+Take a new terminal, move to outputs/ folder and run:
 
 ```
 # Start Optuna dashboard (for hyperparameter tuning)
