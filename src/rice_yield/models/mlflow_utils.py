@@ -5,7 +5,7 @@
 # """
 
 # Standard library imports
-import os
+# import os
 from typing import Optional
 
 # Third-party library imports
@@ -15,6 +15,7 @@ import pandas as pd
 from mlflow.data import from_pandas  # type: ignore
 from mlflow.data.dataset import Dataset
 from mlflow.data.http_dataset_source import HTTPDatasetSource
+from pathlib import Path
 from sklearn.pipeline import Pipeline
 
 
@@ -137,8 +138,8 @@ def log_input(data: Dataset, context: str) -> None:
     mlflow.log_input(data, context=context)
 
 
-def create_folder(folder_path: str) -> None:
+def set_tracking_uri(uri: Path) -> None:
     """
-    Create the folder if it does not exist.
+    Sets where the outputs of MLflow runs should be saved locally
     """
-    os.makedirs(folder_path, exist_ok=True)
+    mlflow.set_tracking_uri(uri)

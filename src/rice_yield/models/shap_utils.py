@@ -1,33 +1,38 @@
-# """
-# shap_utils.py
-# -------------
-# Functions for model interpretation using SHAP.
-# """
-
-# import shap
-# import pandas as pd
-# import matplotlib.pyplot as plt
-# from sklearn.base import RegressorMixin
+import pandas as pd
+from pathlib import Path
+import shap
+from rice_yield.utils.notebook_utils import load_model
 
 
-# def explain_model(
-#     model: RegressorMixin,
-#     X: pd.DataFrame,
-#     max_display: int = 20
-# ) -> shap.Explanation:
-#     """
-#     Compute SHAP values for a trained model.
+def shap_explainer(model_path: Path,
+                   train_df: pd.DataFrame,
+                   estimator_step_name: str) -> shap.Explanation:
+    """
+    Load saved model and create SHAP explainer with preprocessed training data.
 
-#     Args:
-#         model (RegressorMixin): Trained model.
-#         X (pd.DataFrame): Features.
-#         max_display (int): Max features to display.
+    Args:
+    model_path : Path
+        Path to the saved model file
+    train_df : pd.DataFrame
+        Training dataframe to preprocess and explain
+    estimator_step_name : str, default='randomforest'
+        Name of the estimator step in the pipeline
 
-#     Returns:
-#         shap.Explanation: SHAP values.
-#     """
-#     explainer = shap.Explainer(model, X)
-#     shap_values = explainer(X)
-#     shap.summary_plot(shap_values, X, show=False, max_display=max_display)
-#     plt.tight_layout()
-#     return shap_values
+    Returns:
+    shap_values
+    """
+
+    best_model = load_model(model_path)
+
+    preprocessor = best_model.named_steps['preprocessor']
+    estimator = best_model.named_steps[estimator_step_name]
+
+    X_train_preprocessed = preprocessor.transform(train_df).toarray()
+
+    feature_names = preprocessor.get_feature_names_out()
+    explainer = shap.Explainer(estimator.predict,
+                               X_train_preprocessed,
+                               feature_names=feature_names)
+    shap_values = explainer(X_train_preprocessed)
+
+    return shap_values

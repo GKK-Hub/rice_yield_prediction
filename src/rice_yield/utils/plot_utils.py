@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import shap
 from htmltools import Tag, TagList, tags
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -381,3 +382,41 @@ def train_test_plot(df: pd.DataFrame, feature: str) -> Tuple:
     ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
     ax.set_yticklabels(ax.get_yticklabels(), fontsize=11)
     return fig, ax
+
+
+def summary_plot(shap_values: shap.Explanation,
+                 max_display: int) -> render.plot:
+
+    @render.plot(width=900, height=700)
+    def plot_summary() -> Axes:
+        plt.style.use('fivethirtyeight')
+        fig, axis = plt.subplots(figsize=(15, 10))
+        ax = shap.plots.bar(shap_values,
+                            max_display=max_display,
+                            show=False,
+                            ax=axis)
+        ax.set_xlabel(ax.get_xlabel(), fontsize=11)
+        ax.set_ylabel(ax.get_ylabel(), fontsize=11)
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=11)
+        return ax
+    return plot_summary
+
+
+def beeswarm_plot(shap_values: shap.Explanation,
+                  max_display: int) -> render.plot:
+
+    @render.plot(width=900, height=700)
+    def plot_beeswarm() -> Axes:
+        plt.style.use('fivethirtyeight')
+        ax = shap.plots.beeswarm(shap_values,
+                                 max_display=max_display,
+                                 show=False,
+                                 plot_size=(15, 10))
+        ax.set_xlabel(ax.get_xlabel(), fontsize=11)
+        ax.set_ylabel(ax.get_ylabel(), fontsize=11)
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=11)
+        return ax
+
+    return plot_beeswarm
