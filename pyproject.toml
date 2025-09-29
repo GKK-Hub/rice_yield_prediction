@@ -15,6 +15,7 @@ license = { text = "MIT" }
 
 dependencies = ["mlflow",
     "optuna",
+    "optuna-dashboard",
     "scikit-learn",
     "numpy",
     "pandas",
