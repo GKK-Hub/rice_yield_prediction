@@ -23,12 +23,20 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-
 # Load saved test data and model
 X_test = pd.read_csv(get_data_dir("final") / "X_test.csv")
 y_test = pd.read_csv(get_data_dir("final") / "y_test.csv")
-best_model = load_model(get_output_dir() / "best_model/rf.joblib")
+best_model = load_model(get_output_dir() / "best_model/randomforest.joblib")
 st.title("Rice Yield Prediction 🌾")
+
+st.write("""
+         The deployed model uses test data that were split from the original
+         dataset specifically for deployment. The train and validation set were
+         used for hyperparameter optimization and model selection respectively.
+         So, only test set data will be availabe during inference. When you hit
+         the predict button, you see the model's prediction as well as the true
+         yield.
+         """)
 
 test_df = X_test.copy()
 test_df['yield'] = y_test.values
