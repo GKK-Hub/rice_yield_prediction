@@ -1,5 +1,5 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 from rice_yield.utils.notebook_utils import load_model
 from rice_yield.utils.paths import get_output_dir, get_data_dir
 
@@ -42,14 +42,12 @@ test_df = X_test.copy()
 test_df['yield'] = y_test.values
 
 # --- Step 2: Auto-fill other features ---
-# 1️⃣ Select district and year
+# Select district and year
 district = st.selectbox("Select District", test_df["dist_name"].unique())
-# year = st.slider("Select Year", min_value=int(test_df["year"].min()),
-#                  max_value=int(test_df["year"].max()),
-#                  value=int(test_df["year"].min()), step=1)
 years_available = sorted(test_df["year"].unique())
 year = st.selectbox("Select Year", years_available)
-# 2️⃣ Prepare input DataFrame with all required columns
+
+# Prepare input DataFrame with all required columns
 row = test_df[(test_df["dist_name"] == district) & (test_df["year"] == year)]
 y_true = row['year'].iloc[0]
 
@@ -63,18 +61,18 @@ else:
     input_df["dist_name"] = district
     input_df["year"] = year
 
-# 3️⃣ Optional: display numeric features as disabled inputs
+# Optional: display numeric features as disabled inputs
 for col in input_df.columns:
     if col not in ["dist_name", "year"]:
         st.number_input(f"{col}",
                         value=float(input_df[col].values[0]),
                         disabled=True)
 
-# 4️⃣ Predict
+# Predict
 if st.button("Predict"):
     prediction = best_model.predict(input_df)[0]
 
-    # 5️⃣ Show prediction
+    # Show prediction
 
     st.success(f"""🔮 Predicted Yield: {prediction:.2f} kg/ha |
                    True Yield (with default values): {y_true:.2f} kg/ha""")
