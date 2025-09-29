@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 # Find project root automatically (where pyproject.toml lives)
@@ -69,6 +70,13 @@ def get_validation_dir() -> Path:
 
 def get_output_dir() -> Path:
     return OUTPUT_DIR
+
+
+def create_folder(folder_path: Path) -> None:
+    """
+    Create the folder if it does not exist.
+    """
+    os.makedirs(folder_path, exist_ok=True)
 
 
 if __name__ == "__main__":
