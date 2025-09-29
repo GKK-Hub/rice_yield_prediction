@@ -52,10 +52,18 @@ git clone https://github.com/GKK-Hub/rice_yield_prediction.git
 cd rice_yield_prediction
 ```
 
-# Create environment
+# Create 
+
+## Windows
 ```
 python -m venv venv
 venv\Scripts\activate
+```
+
+## Linux/MacOS
+```
+python -m venv venv
+source venv/bin/activate
 ```
 
 # Install dependencies
@@ -64,6 +72,9 @@ pip install -e .
 ```
 
 # Data processing
+
+From the project root, run:
+
 ```
 # Process individual raw files
 rice-yield process
@@ -73,6 +84,9 @@ rice-yield combine
 ```
 
 # Explore data and optimize models
+
+From the project root, run:
+
 ```
 # Exploratory data analysis
 quarto preview notebooks/eda.qmd
@@ -80,6 +94,7 @@ quarto preview notebooks/eda.qmd
 # Model training and hyperparameter optimization
 quarto preview notebooks/optimize.qmd
 ```
+Note: Running optimize.qmd will create the outputs/ folder dynamically.
 
 # Monitor experiments
 ```
@@ -94,11 +109,10 @@ optuna-dashboard "sqlite:///models_db.sqlite3"
 ```
 
 # Run the streamlit app
-```
-# Go to outputs folder
-cd outputs
 
-# Run app
+From project root, run
+
+```
 streamlit run streamlit_app.py
 ```
 
