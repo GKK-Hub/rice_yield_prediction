@@ -98,11 +98,8 @@ optuna-dashboard "sqlite:///models_db.sqlite3"
 # Go to outputs folder
 cd outputs
 
-# Start MLflow UI
-mlflow ui
-
-# Start Optuna dashboard (for hyperparameter tuning)
-optuna-dashboard "sqlite:///models_db.sqlite3"
+# Run app
+streamlit run streamlit_app.py
 ```
 
 # Contact
