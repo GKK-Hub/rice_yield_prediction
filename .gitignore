@@ -19,7 +19,6 @@ ENV/
 *.docx
 
 # --- Data (large, reproducible) ---
-data/raw/
 data/cleaned/
 data/final/
 
@@ -41,3 +40,14 @@ build/
 
 # --- IDE / Editor settings ---
 .vscode/
+
+# Notebooks
+notebooks/eda_files/
+notebooks/optimize_files
+
+
+# Shiny App 
+notebooks/app.py
+
+# --- Logs ---
+outputs/
