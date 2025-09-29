@@ -46,16 +46,14 @@ import warnings
 import numpy as np
 import optuna
 import pandas as pd
-import shap
 import sklearn
 from shiny.express import input, render, ui
 from sklearn import set_config
 from sklearn.compose import ColumnTransformer
 from sklearn.compose import make_column_selector as selector
 from sklearn.ensemble import (AdaBoostRegressor, 
-                             ExtraTreesRegressor, 
-                             RandomForestRegressor)
-from sklearn.linear_model import Ridge
+                              ExtraTreesRegressor, 
+                              RandomForestRegressor)
 from sklearn.model_selection import TimeSeriesSplit, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
@@ -73,11 +71,11 @@ from rice_yield.utils.paths import (get_data_dir,
                                     get_output_dir, 
                                     create_folder)
 from rice_yield.utils.plot_utils import (plot_prediction_error, 
-                                        plot_train_test_scores, 
-                                        train_test_plot, 
-                                        validation_curve_display,
-                                        summary_plot,
-                                        beeswarm_plot)
+                                         plot_train_test_scores, 
+                                         train_test_plot, 
+                                         validation_curve_display,
+                                         summary_plot,
+                                         beeswarm_plot)
 warnings.filterwarnings("ignore")
 ```
 
@@ -94,7 +92,7 @@ df = pd.read_csv(file_path)
 
 ## Chapter 6: Split Data - Train, Valid and Test
 
-Let\'s sort the data before splitting the data.
+We will use the train set for hyperparameter optimizaton, validation set for picking the optimal model and test set for deployment. There should be no overlap between the sets. Let\'s sort the data before splitting the data.
 
 ```{python}
 df = df.sort_values(["year", "dist_name"], ignore_index=True)
@@ -112,7 +110,7 @@ years = sorted(df["year"].unique())
 total_years = len(years)
 
 # Calculate number of years for each split
-train_years = int(total_years * 0.6) # 60 % for training
+train_years = int(total_years * 0.6)  # 60 % for training
 val_years = int(total_years * 0.2)  # 20 % for vaildating, remaining for testing
 
 train_cutoff = years[train_years - 1]  # we're indexing an array so we subtract 1, otherwise will get 1 more than train/val_years
@@ -203,6 +201,8 @@ y_test = test_df[target]
 
 ### Time-series Split
 
+Due to the time-series nature of the dataset, we use time aware cross-validation which doesn't split the data randomly. So, the end year of the train set will always be a year less than the start of the test set. 
+
 
 ```{python}
 set_config(display="diagram")
@@ -245,19 +245,13 @@ preprocessor
 
 # Chapter 7: Validation Curves
 
+We use validation curves to find out the search space for each candidate model where the optimal value will be likely in.
+
 ```{python}
-candidate_models = {
-    "Ridge Regression": {
-        "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
-                                  ("ridge", Ridge(max_iter=1000))]),
-        "param_grid": {
-            "ridge__alpha": [0.05, 0.02, 0.01, 0.1, 0.2, 0.5, 1, 2]  # Regularization strength
-        }
-    },
-    
+candidate_models = {    
     "Support Vector Regressor": {
         "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
-                                  ("svr", SVR(max_iter=500))]),
+                                    ("svr", SVR(max_iter=500))]),
         "param_grid": {
             "svr__C": [1, 5, 10, 20, 50],
             "svr__epsilon": [0.1, 1, 1.5, 2],
@@ -267,7 +261,7 @@ candidate_models = {
     
     "Random Forest Regressor": {
         "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
-                                  ("rf", RandomForestRegressor())]),
+                                    ("rf", RandomForestRegressor())]),
         "param_grid": {
             "rf__n_estimators": [50, 100, 150, 200],
             "rf__max_depth": [3, 5, 8, 10, 12],
@@ -277,7 +271,7 @@ candidate_models = {
 
     "Extra Trees Regressor": {
         "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
-                                  ("etr", ExtraTreesRegressor())]),
+                                    ("etr", ExtraTreesRegressor())]),
         "param_grid": {
             "etr__n_estimators": [1, 2, 3, 4, 5],
             "etr__max_depth": [1, 2, 3, 4],
@@ -288,7 +282,7 @@ candidate_models = {
     
     "Decision Tree Regressor": {
         "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
-                                  ("dt", DecisionTreeRegressor())]),
+                                    ("dt", DecisionTreeRegressor())]),
         "param_grid": {
             "dt__max_depth": [1, 2, 3, 4, 5, 8],
             "dt__min_samples_split": [5, 8, 12, 15, 20],
@@ -298,7 +292,7 @@ candidate_models = {
     
     "Ada Boost Regressor": {
         "pipeline": Pipeline(steps=[("preprocessor", preprocessor), 
-                                  ("ada", AdaBoostRegressor(DecisionTreeRegressor()))]),
+                                    ("ada", AdaBoostRegressor(DecisionTreeRegressor()))]),
         "param_grid": {
             "ada__n_estimators": [1, 2, 5, 8, 10],
             "ada__learning_rate": [0.001, 0.01, 1, 1.2, 2, 3],
@@ -307,7 +301,7 @@ candidate_models = {
     
     "XGBoost Regressor": {
         "pipeline": Pipeline(steps=[("preprocessor", preprocessor),
-                                  ("xgb", XGBRegressor())]),
+                                    ("xgb", XGBRegressor())]),
         "param_grid": {
             "xgb__n_estimators": [1, 2, 5, 8, 10],
             "xgb__learning_rate": [0.01, 0.1, 0.2],
@@ -327,19 +321,19 @@ default_model = model_names[0] if model_names else None
 def show_validation_curves():
     @render.ui()
     def dropdown_model():
-        return ui.input_select(id="model",
-                                label="Select Model",
-                                choices=model_names,
-                                selected=default_model)
+        return ui.input_select(id="model", 
+                               label="Select Model",
+                               choices=model_names,
+                               selected=default_model)
     
     @render.ui()
     def dropdown_param():
         params = list(candidate_models[input.model()]["param_grid"].keys())
         default_param = params[0] if params else None
         return ui.input_select(id="param",
-                                label="Select Hyperparameter",
-                                choices=params,
-                                selected=default_param)
+                               label="Select Hyperparameter",
+                               choices=params,
+                               selected=default_param)
     
     @render.plot(width=900, height=500)  # type: ignore
     def show_plot():
@@ -388,7 +382,6 @@ plot
 ```
 
 # Chapter 8: Hyperparameter Optimization
-
 
 ```{python}
 # Candidate models and their search spaces defined with the help of observations from Validation Curves
@@ -474,9 +467,9 @@ def make_objective(model_name, model_class, param_fn):
 
         # Start MLflow run for this trial
         with mlf.start_run(model_name=model_name, 
-                       experiment_type="HPO", 
-                       run_name=f"{model_name}_trial_{trial.number}", 
-                       nest=True) as run:
+                           experiment_type="HPO", 
+                           run_name=f"{model_name}_trial_{trial.number}", 
+                           nest=True) as run:
             
             # Build pipeline
             model = Pipeline([("preprocessor", preprocessor), 
@@ -586,6 +579,17 @@ def prediction_error_plot():
 
 ```
 
+<br>
+
+* We can observe from the predicton error plot that, Random Forest model is better than the competing models but still makes large errors. 
+
+* In the Residual vs Predicted plot of Random Forest model, we can observe that the model predicted more values in the range 2500 to 4000. And these points are further away from the zero line, differing about 500 - 1000 for most values. So, this level of performance is also expected when the model is deployed and tested using test set.
+
+* We can also observe that the performance has plateaued for all the models and couldn\'t be improved further with the given feature set.
+
+* It makes sense that prediction of rice yield also depends on other factors like soil quality, fertilize used, rice variety among other things. As these data are unavailabe on the ICRISAT site, we could assume that more data would help uncover real-world conditons in a better way and also improve model performance.
+
+</br>
 
 ```{python}
 @render.ui
@@ -611,6 +615,16 @@ def plot_train_test():
                                      scoring_name="MAE")
     return fig
 ```
+
+<br>
+
+* In this plot, Random Forest model yield one of the lowest train and validation scores and the difference is smaller which indicates that there\'s no overfitting. 
+
+* However, since the train and validation errors are high, we have to admit that the model has underfit the data. Getting more data should help overcome this issue.
+
+* Finally, the best model (Random Forest) is chosen from competing models and before using it for deployment, we\'ll train on the full train + validation set.
+
+</br>
 
 
 ## Training on  Train + Val Data before Deployment
@@ -639,29 +653,28 @@ shap_val = shap_explainer(best_model_path, full_train_df, "randomforest")
 ```
 
 ```{python}
-# import matplotlib.pyplot as plt
-# plt.style.use("fivethirtyeight")
-
-# fig_summary, ax_summary = plt.subplots(figsize=(15, 10))
-# shap.plots.bar(shap_val, ax=ax_summary)
-# plt.close()
-```
-
-
-```{python}
-# plt.style.use("fivethirtyeight")
-# fig_beeswarm, ax_beeswarm = plt.subplots(figsize=(15, 10))
-# shap.plots.beeswarm(shap_val, max_display=20, ax=ax_beeswarm, plot_size=None)
-# plt.close()
-```
-
-```{python}
 summary_plot(shap_val, max_display=20)
 ```
 
 ```{python}
 beeswarm_plot(shap_val, max_display=20)
 ```
+
+
+<br>
+
+We can infer the following from the beeswarm plot:
+
+* The `area_ratio` feature shows mixed effect, though higher the value for this features, higher the shap values and hence contribute positively to the yield
+
+* `water_deficit` is another feature that aligns with the agro knowledge. Low water deficit contributes greatly in a positive way to the yeid. Likewise, `act_etranspiration`.
+
+* Low values of `avg_temperature` contribute positively to the yield while high values contribute
+negatively.
+
+* `rainfall` and `year` have mixed effect meaning that they don\'t contribute in one direction.
+
+</br>
 
 ```{python}
 data_dir = get_data_dir("final")
@@ -674,3 +687,5 @@ y_train.to_csv(data_dir/"y_train.csv", index=False)
 y_val.to_csv(data_dir/"y_val.csv", index=False)
 y_test.to_csv(data_dir/"y_test.csv", index=False)
 ```
+ 
+The best performing model has been saved and will be used for app deployment using Streamlit.
