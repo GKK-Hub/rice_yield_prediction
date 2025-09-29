@@ -46,13 +46,13 @@ rice_yield_prediction
 
 ```
 
-# Clone
+# Clone the repository
 ```
 git clone https://github.com/GKK-Hub/rice_yield_prediction.git
 cd rice_yield_prediction
 ```
 
-# Create 
+# Create environment
 
 ## Windows
 ```
@@ -73,25 +73,38 @@ pip install -e .
 
 # Data processing
 
-From the project root, run:
+Open a new terminal and from the project root, run:
 
 ```
 # Process individual raw files
 rice-yield process
+```
+Once it's complete, run the following:
 
 # Combine processed files into a single dataset
+```
+# Combine the cleaned files
 rice-yield combine
 ```
 
+You should see two folders created under data\ after the above code is run.
+
 # Explore data and optimize models
 
-From the project root, run:
+In the same terminal, run:
 
 ```
 # Exploratory data analysis
 quarto preview notebooks/eda.qmd
+```
+
+Once the above command re-directs to a browser, read the analysis. 
+
+Now, take a new terminal and run:
 
 # Model training and hyperparameter optimization
+```
+# Model optimization and SHAP
 quarto preview notebooks/optimize.qmd
 ```
 Note: Running optimize.qmd will create the outputs/ folder dynamically.
@@ -100,15 +113,24 @@ Note: Running optimize.qmd will create the outputs/ folder dynamically.
 ```
 # Go to outputs folder
 cd outputs
-
+```
+Take a new terminal and run:
+```
 # Start MLflow UI
-mlflow ui
+mlflow 
+```
 
+If it doesn't re-direct to a browser window, click on the local host url from the terminal output.
+
+Take a new terminal and run:
+``
 # Start Optuna dashboard (for hyperparameter tuning)
 optuna-dashboard "sqlite:///models_db.sqlite3"
 ```
+If it doesn't re-direct to a browser window, do the same as above.
 
-# Run the streamlit app
+
+Finally, take a new terminal and run:
 
 From project root, run
 
