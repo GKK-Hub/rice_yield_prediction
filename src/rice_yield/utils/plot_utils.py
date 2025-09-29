@@ -395,6 +395,10 @@ def summary_plot(shap_values: shap.Explanation,
                             max_display=max_display,
                             show=False,
                             ax=axis)
+        ax.set_title('Summary Plot',
+                     fontdict={'fontsize': 14,
+                               'fontweight': 'bold',
+                               'family': 'Arial'})
         ax.set_xlabel(ax.get_xlabel(), fontsize=11)
         ax.set_ylabel(ax.get_ylabel(), fontsize=11)
         ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
@@ -413,6 +417,10 @@ def beeswarm_plot(shap_values: shap.Explanation,
                                  max_display=max_display,
                                  show=False,
                                  plot_size=(15, 10))
+        ax.set_title('Beeswarm Plot',
+                     fontdict={'fontsize': 14,
+                               'fontweight': 'bold',
+                               'family': 'Arial'})
         ax.set_xlabel(ax.get_xlabel(), fontsize=11)
         ax.set_ylabel(ax.get_ylabel(), fontsize=11)
         ax.set_xticklabels(ax.get_xticklabels(), fontsize=11)
